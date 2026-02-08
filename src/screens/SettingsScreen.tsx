@@ -9,7 +9,7 @@ import { formatRelativeTime } from '@/utils/time';
 export function SettingsScreen() {
   const child = useCurrentChild();
   const isConfigured = isSupabaseConfigured();
-  
+
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState<string | null>(null);
   const [isEditingChild, setIsEditingChild] = useState(false);
@@ -21,11 +21,11 @@ export function SettingsScreen() {
   const handleSync = async () => {
     setIsSyncing(true);
     setSyncMessage(null);
-    
+
     try {
       const result = await syncAll();
       if (result.success) {
-        setSyncMessage(`Synced! ↑${result.totalPushed} ↓${result.totalPulled}`);
+        setSyncMessage(`Synced! pushed ${result.totalPushed}, pulled ${result.totalPulled}`);
       } else {
         setSyncMessage(result.errors[0] || 'Sync failed');
       }
@@ -79,6 +79,28 @@ export function SettingsScreen() {
     URL.revokeObjectURL(url);
   };
 
+  const handleRefreshAppShell = async () => {
+    const shouldRefresh = confirm(
+      'Refresh app shell now? This clears cached app files and reloads, but keeps your baby data.'
+    );
+
+    if (!shouldRefresh) return;
+
+    try {
+      if ('serviceWorker' in navigator) {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(registrations.map(registration => registration.unregister()));
+      }
+
+      if ('caches' in window) {
+        const cacheKeys = await caches.keys();
+        await Promise.all(cacheKeys.map(cacheKey => caches.delete(cacheKey)));
+      }
+    } finally {
+      window.location.reload();
+    }
+  };
+
   const handleClearData = async () => {
     if (confirm('Are you sure you want to delete all data? This cannot be undone.')) {
       await Promise.all([
@@ -99,7 +121,6 @@ export function SettingsScreen() {
       </header>
 
       <div className="px-4 space-y-6">
-        {/* Child Profile */}
         <section className="bg-sand-900/60 rounded-2xl p-4 border border-leather-800/50">
           <div className="flex items-center gap-3 mb-4">
             <div className="w-10 h-10 rounded-full bg-primary-600 flex items-center justify-center">
@@ -115,7 +136,7 @@ export function SettingsScreen() {
                 <input
                   type="text"
                   value={childName}
-                  onChange={(e) => setChildName(e.target.value)}
+                  onChange={e => setChildName(e.target.value)}
                   className="input"
                   placeholder="Baby's name"
                 />
@@ -125,7 +146,7 @@ export function SettingsScreen() {
                 <input
                   type="date"
                   value={childBirthDate}
-                  onChange={(e) => setChildBirthDate(e.target.value)}
+                  onChange={e => setChildBirthDate(e.target.value)}
                   className="input"
                 />
               </div>
@@ -133,10 +154,7 @@ export function SettingsScreen() {
                 <button onClick={handleSaveChild} className="btn-primary btn-md flex-1">
                   Save
                 </button>
-                <button
-                  onClick={() => setIsEditingChild(false)}
-                  className="btn-secondary btn-md flex-1"
-                >
+                <button onClick={() => setIsEditingChild(false)} className="btn-secondary btn-md flex-1">
                   Cancel
                 </button>
               </div>
@@ -166,12 +184,13 @@ export function SettingsScreen() {
           )}
         </section>
 
-        {/* Sync Status */}
         <section className="bg-sand-900/60 rounded-2xl p-4 border border-leather-800/50">
           <div className="flex items-center gap-3 mb-4">
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-              isConfigured && navigator.onLine ? 'bg-lime-700' : 'bg-leather-700'
-            }`}>
+            <div
+              className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                isConfigured && navigator.onLine ? 'bg-lime-700' : 'bg-leather-700'
+              }`}
+            >
               {isConfigured && navigator.onLine ? (
                 <Cloud className="w-5 h-5 text-white" />
               ) : (
@@ -180,23 +199,13 @@ export function SettingsScreen() {
             </div>
             <div>
               <h2 className="text-lg font-semibold text-sand-100">Sync</h2>
-              <p className="text-sm text-sand-400">
-                {isConfigured 
-                  ? navigator.onLine ? 'Connected' : 'Offline' 
-                  : 'Not configured'}
-              </p>
+              <p className="text-sm text-sand-400">{isConfigured ? (navigator.onLine ? 'Connected' : 'Offline') : 'Not configured'}</p>
             </div>
           </div>
 
-          {lastSyncTime && (
-            <p className="text-sm text-sand-400 mb-3">
-              Last synced {formatRelativeTime(lastSyncTime)}
-            </p>
-          )}
+          {lastSyncTime && <p className="text-sm text-sand-400 mb-3">Last synced {formatRelativeTime(lastSyncTime)}</p>}
 
-          {syncMessage && (
-            <p className="text-sm text-primary-400 mb-3">{syncMessage}</p>
-          )}
+          {syncMessage && <p className="text-sm text-primary-400 mb-3">{syncMessage}</p>}
 
           <button
             onClick={handleSync}
@@ -214,11 +223,18 @@ export function SettingsScreen() {
           )}
         </section>
 
-        {/* Data Management */}
         <section className="bg-sand-900/60 rounded-2xl p-4 border border-leather-800/50">
           <h2 className="text-lg font-semibold text-sand-100 mb-4">Data</h2>
-          
+
           <div className="space-y-3">
+            <button
+              onClick={handleRefreshAppShell}
+              className="btn-secondary btn-md w-full flex items-center justify-center gap-2"
+            >
+              <RefreshCw className="w-4 h-4" />
+              Refresh App Shell
+            </button>
+
             <button
               onClick={handleExportData}
               className="btn-secondary btn-md w-full flex items-center justify-center gap-2"
@@ -229,8 +245,7 @@ export function SettingsScreen() {
 
             <button
               onClick={handleClearData}
-              className="btn w-full btn-md bg-red-700/20 text-red-400 hover:bg-red-700/30 
-                flex items-center justify-center gap-2"
+              className="btn w-full btn-md bg-red-700/20 text-red-400 hover:bg-red-700/30 flex items-center justify-center gap-2"
             >
               <Trash2 className="w-4 h-4" />
               Clear All Data
@@ -238,11 +253,10 @@ export function SettingsScreen() {
           </div>
         </section>
 
-        {/* App Info */}
         <section className="text-center text-sm text-sand-500 py-4">
           <p className="western-title text-lg">Tombstone v0.1.0</p>
-          <p className="mt-2 italic">"I'm your huckleberry"</p>
-          <p className="mt-1">Made with 🤠 for tired parents</p>
+          <p className="mt-2 italic">&quot;I&apos;m your huckleberry&quot;</p>
+          <p className="mt-1">Made with care for tired parents</p>
         </section>
       </div>
     </div>
