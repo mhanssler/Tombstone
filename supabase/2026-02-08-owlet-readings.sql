@@ -30,7 +30,9 @@ CREATE INDEX IF NOT EXISTS idx_owlet_readings_source_session
 ALTER TABLE owlet_readings ENABLE ROW LEVEL SECURITY;
 
 DROP POLICY IF EXISTS "Allow all for authenticated" ON owlet_readings;
-CREATE POLICY "Allow all for authenticated"
+DROP POLICY IF EXISTS "Allow all for anon and authenticated" ON owlet_readings;
+CREATE POLICY "Allow all for anon and authenticated"
   ON owlet_readings
   FOR ALL
-  USING (auth.role() = 'authenticated');
+  USING (auth.role() = 'anon' OR auth.role() = 'authenticated')
+  WITH CHECK (auth.role() = 'anon' OR auth.role() = 'authenticated');
