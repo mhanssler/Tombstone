@@ -108,6 +108,20 @@ def safe_raw_payload(props: Dict[str, Any]) -> Dict[str, Any]:
     return data
 
 
+def parse_realtime_vitals(props: Dict[str, Any]) -> Dict[str, Any]:
+    raw = get_prop_value(props, "REAL_TIME_VITALS")
+    if isinstance(raw, str):
+        try:
+            parsed = json.loads(raw)
+            if isinstance(parsed, dict):
+                return parsed
+        except json.JSONDecodeError:
+            return {}
+    if isinstance(raw, dict):
+        return raw
+    return {}
+
+
 def recorded_at_ms(props: Dict[str, Any]) -> int:
     # pyowletapi v3 field
     ts = get_prop_value(props, "data_updated_at")
@@ -126,11 +140,38 @@ def recorded_at_ms(props: Dict[str, Any]) -> int:
 
 
 def build_row(child_id: str, dsn: str, props: Dict[str, Any]) -> Dict[str, Any]:
-    hr = as_int(get_prop_value(props, "HEART_RATE") or get_prop_value(props, "hr"))
-    ox = as_float(get_prop_value(props, "OXYGEN_LEVEL") or get_prop_value(props, "ox"))
-    movement = as_float(get_prop_value(props, "MOVEMENT") or get_prop_value(props, "mv"))
-    sock_conn = as_bool(get_prop_value(props, "SOCK_CONNECTION") or get_prop_value(props, "sc"))
-    battery = as_float(get_prop_value(props, "BATT_LEVEL") or get_prop_value(props, "bat"))
+    rt_vitals = parse_realtime_vitals(props)
+
+    hr = as_int(
+        get_prop_value(props, "heart_rate")
+        or rt_vitals.get("hr")
+        or get_prop_value(props, "HEART_RATE")
+        or get_prop_value(props, "hr")
+    )
+    ox = as_float(
+        get_prop_value(props, "oxygen_saturation")
+        or rt_vitals.get("ox")
+        or get_prop_value(props, "OXYGEN_LEVEL")
+        or get_prop_value(props, "ox")
+    )
+    movement = as_float(
+        get_prop_value(props, "movement")
+        or rt_vitals.get("mv")
+        or get_prop_value(props, "MOVEMENT")
+        or get_prop_value(props, "mv")
+    )
+    sock_conn = as_bool(
+        get_prop_value(props, "sock_connection")
+        or rt_vitals.get("sc")
+        or get_prop_value(props, "SOCK_CONNECTION")
+        or get_prop_value(props, "sc")
+    )
+    battery = as_float(
+        get_prop_value(props, "battery_percentage")
+        or rt_vitals.get("bat")
+        or get_prop_value(props, "BATT_LEVEL")
+        or get_prop_value(props, "bat")
+    )
 
     ts_ms = recorded_at_ms(props)
     source_session_id = f"{dsn}:{ts_ms}"
@@ -143,7 +184,10 @@ def build_row(child_id: str, dsn: str, props: Dict[str, Any]) -> Dict[str, Any]:
         "heartRateBpm": hr,
         "oxygenSaturationPct": ox,
         "movementLevel": movement,
-        "sleepState": normalize_sleep_state(get_prop_value(props, "SOCK_OFF") or get_prop_value(props, "sock_off"), movement),
+        "sleepState": normalize_sleep_state(
+            get_prop_value(props, "sock_off") or get_prop_value(props, "SOCK_OFF"),
+            movement,
+        ),
         "sockConnected": sock_conn,
         "batteryPct": battery,
         "sourceDeviceId": dsn,
