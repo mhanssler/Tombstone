@@ -22,6 +22,7 @@ import {
   useTodaySummary,
   useLastPoop,
   useLastPee,
+  useOwletReadingsForRange,
   useLatestOwletReading,
 } from '@/hooks';
 import {
@@ -46,6 +47,7 @@ import type { DiaperType, SleepSession, FeedingSession, PumpSession, DiaperChang
 export function HomeScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [nowMs, setNowMs] = useState(Date.now());
   const child = useCurrentChild();
   const activeSleep = useActiveSleep();
   const activeFeeding = useActiveFeeding();
@@ -57,6 +59,12 @@ export function HomeScreen() {
   const lastPoop = useLastPoop(child?.id);
   const lastPee = useLastPee(child?.id);
   const latestOwlet = useLatestOwletReading(child?.id);
+  const owletTrend = useOwletReadingsForRange(
+    child?.id,
+    nowMs - 60 * 60 * 1000,
+    nowMs,
+    240
+  );
 
   // Initialize child on first load
   useEffect(() => {
@@ -71,6 +79,11 @@ export function HomeScreen() {
       }
     }
     init();
+  }, []);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => setNowMs(Date.now()), 30000);
+    return () => window.clearInterval(timer);
   }, []);
 
   const handleStartSleep = async () => {
@@ -212,7 +225,7 @@ export function HomeScreen() {
         )}
 
         {/* Owlet Status */}
-        <OwletStatusCard reading={latestOwlet} />
+        <OwletStatusCard reading={latestOwlet} trendReadings={owletTrend} />
 
         {/* Diaper Buttons */}
         <div>
