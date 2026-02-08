@@ -392,7 +392,7 @@ export function setupAutoSync(onSyncComplete?: (result: Awaited<ReturnType<typeo
     if (navigator.onLine && document.visibilityState === 'visible') {
       handleSync();
     }
-  }, 30000);
+  }, 10000);
 
   // Return cleanup function
   return () => {
@@ -505,5 +505,6 @@ export function setupRealtimeSync(): () => void {
     }
   };
 }
+
 
 
