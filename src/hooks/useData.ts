@@ -14,8 +14,10 @@ import {
   getLastPump,
   getLastPoop,
   getLastPee,
+  getLatestOwletReading,
+  getOwletReadingsForRange,
 } from '@/database/queries';
-import type { Child, SleepSession, FeedingSession, PumpSession, DiaperChange, ActiveTimer } from '@/types';
+import type { Child, SleepSession, FeedingSession, PumpSession, DiaperChange, ActiveTimer, OwletReading } from '@/types';
 
 // Get the current child
 export function useCurrentChild(): Child | undefined {
@@ -192,4 +194,31 @@ export function useLastPee(childId: string | undefined): DiaperChange | undefine
     },
     [childId]
   );
+}
+
+// Get latest Owlet reading
+export function useLatestOwletReading(childId: string | undefined): OwletReading | undefined {
+  return useLiveQuery(
+    async () => {
+      if (!childId) return undefined;
+      return getLatestOwletReading(childId);
+    },
+    [childId]
+  );
+}
+
+// Get Owlet readings for a specific time range
+export function useOwletReadingsForRange(
+  childId: string | undefined,
+  startTime: number,
+  endTime: number,
+  limit: number = 500
+): OwletReading[] {
+  return useLiveQuery(
+    async () => {
+      if (!childId) return [];
+      return getOwletReadingsForRange(childId, startTime, endTime, limit);
+    },
+    [childId, startTime, endTime, limit]
+  ) ?? [];
 }

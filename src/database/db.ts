@@ -6,6 +6,7 @@ import type {
   PumpSession,
   DiaperChange,
   GrowthMeasurement,
+  OwletReading,
   ActiveTimer,
   AppSettings,
 } from '@/types';
@@ -17,6 +18,7 @@ export class BabySleepTrackerDB extends Dexie {
   pumpSessions!: Table<PumpSession>;
   diaperChanges!: Table<DiaperChange>;
   growthMeasurements!: Table<GrowthMeasurement>;
+  owletReadings!: Table<OwletReading>;
   activeTimers!: Table<ActiveTimer>;
   settings!: Table<AppSettings>;
 
@@ -42,6 +44,19 @@ export class BabySleepTrackerDB extends Dexie {
       pumpSessions: 'id, childId, startTime, syncStatus, updatedAt, _deleted',
       diaperChanges: 'id, childId, time, syncStatus, updatedAt, _deleted',
       growthMeasurements: 'id, childId, date, syncStatus, updatedAt, _deleted',
+      activeTimers: 'id, activityType',
+      settings: 'id',
+    });
+
+    // v3: Add Owlet reading snapshots (local ingestion from bridge)
+    this.version(3).stores({
+      children: 'id, syncStatus, updatedAt, _deleted',
+      sleepSessions: 'id, childId, startTime, endTime, syncStatus, updatedAt, _deleted',
+      feedingSessions: 'id, childId, startTime, syncStatus, updatedAt, _deleted',
+      pumpSessions: 'id, childId, startTime, syncStatus, updatedAt, _deleted',
+      diaperChanges: 'id, childId, time, syncStatus, updatedAt, _deleted',
+      growthMeasurements: 'id, childId, date, syncStatus, updatedAt, _deleted',
+      owletReadings: 'id, childId, recordedAt, syncStatus, updatedAt, _deleted, sourceSessionId',
       activeTimers: 'id, activityType',
       settings: 'id',
     });
@@ -76,7 +91,7 @@ export async function initializeSettings(): Promise<AppSettings> {
   return defaultSettings;
 }
 
-// Fixed child ID — every device uses this same ID so there's never a duplicate
+// Fixed child ID - every device uses this same ID so there's never a duplicate
 const DEFAULT_CHILD_ID = '00000000-0000-0000-0000-000000000001';
 
 // Get or create the single child (single-child mode)
@@ -107,6 +122,7 @@ export async function getOrCreateDefaultChild(name: string = 'Baby'): Promise<Ch
       db.feedingSessions,
       db.pumpSessions,
       db.diaperChanges,
+      db.owletReadings,
     ] as const;
 
     for (const table of tables) {
@@ -143,7 +159,7 @@ export async function getOrCreateDefaultChild(name: string = 'Baby'): Promise<Ch
     return canonicalChild;
   }
 
-  // No old children — create fresh
+  // No old children - create fresh
   const newChild: Child = {
     id: DEFAULT_CHILD_ID,
     name,

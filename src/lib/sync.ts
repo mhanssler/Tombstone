@@ -4,7 +4,7 @@ import { getSupabase, isSupabaseConfigured } from './supabase';
 import type { SyncableEntity } from '@/types';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 
-type TableName = 'children' | 'sleep_sessions' | 'feeding_sessions' | 'pump_sessions' | 'diaper_changes' | 'growth_measurements';
+type TableName = 'children' | 'sleep_sessions' | 'feeding_sessions' | 'pump_sessions' | 'diaper_changes' | 'growth_measurements' | 'owlet_readings';
 
 interface SyncResult {
   pushed: number;
@@ -53,6 +53,7 @@ const tableMapping: Record<string, TableName> = {
   pumpSessions: 'pump_sessions',
   diaperChanges: 'diaper_changes',
   growthMeasurements: 'growth_measurements',
+  owletReadings: 'owlet_readings',
 };
 
 // Get the last sync timestamp for a table
@@ -215,8 +216,10 @@ export async function syncAll(): Promise<{
     results.children = await syncTable('children', db.children);
     results.sleepSessions = await syncTable('sleepSessions', db.sleepSessions);
     results.feedingSessions = await syncTable('feedingSessions', db.feedingSessions);
+    results.pumpSessions = await syncTable('pumpSessions', db.pumpSessions);
     results.diaperChanges = await syncTable('diaperChanges', db.diaperChanges);
     results.growthMeasurements = await syncTable('growthMeasurements', db.growthMeasurements);
+    results.owletReadings = await syncTable('owletReadings', db.owletReadings);
 
     // Aggregate results
     for (const result of Object.values(results)) {
@@ -305,7 +308,7 @@ async function mergeChildren(): Promise<void> {
     const oldChild = allChildren.find((c: { id: string }) => c.id !== DEFAULT_CHILD_ID) || allChildren[0];
 
     // Re-assign all data in Supabase from old child IDs to the fixed ID
-    const dataTables = ['sleep_sessions', 'feeding_sessions', 'pump_sessions', 'diaper_changes'] as const;
+    const dataTables = ['sleep_sessions', 'feeding_sessions', 'pump_sessions', 'diaper_changes', 'owlet_readings'] as const;
 
     for (const table of dataTables) {
       const { data: records, error: fetchError } = await getSupabase()
@@ -407,6 +410,7 @@ const localTableMapping: Record<TableName, keyof typeof db> = {
   pump_sessions: 'pumpSessions',
   diaper_changes: 'diaperChanges',
   growth_measurements: 'growthMeasurements',
+  owlet_readings: 'owletReadings',
 };
 
 // Handle real-time database changes from Supabase
@@ -484,6 +488,11 @@ export function setupRealtimeSync(): () => void {
       { event: '*', schema: 'public', table: 'growth_measurements' },
       (payload) => handleRealtimeChange('growth_measurements', payload)
     )
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'owlet_readings' },
+      (payload) => handleRealtimeChange('owlet_readings', payload)
+    )
     .subscribe((status) => {
       console.log('[Realtime] Subscription status:', status);
     });
@@ -496,3 +505,5 @@ export function setupRealtimeSync(): () => void {
     }
   };
 }
+
+

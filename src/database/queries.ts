@@ -10,6 +10,8 @@ import type {
   FeedingType,
   DiaperType,
   ActiveTimer,
+  OwletReading,
+  OwletSleepState,
 } from '@/types';
 
 // ============ SLEEP SESSIONS ============
@@ -566,3 +568,119 @@ export async function getLastPump(childId: string): Promise<PumpSession | undefi
 
   return pumps[0];
 }
+
+// ============ OWLET READINGS (Local Ingestion) ============
+
+export interface IngestOwletReadingInput {
+  recordedAt: number;
+  heartRateBpm?: number;
+  oxygenSaturationPct?: number;
+  movementLevel?: number;
+  sleepState?: OwletSleepState;
+  sockConnected?: boolean;
+  batteryPct?: number;
+  sourceDeviceId?: string;
+  sourceSessionId?: string;
+  rawPayload?: Record<string, unknown>;
+}
+
+export async function ingestOwletReading(
+  childId: string,
+  input: IngestOwletReadingInput
+): Promise<OwletReading> {
+  const now = Date.now();
+  const reading: OwletReading = {
+    id: uuidv4(),
+    childId,
+    recordedAt: input.recordedAt,
+    heartRateBpm: input.heartRateBpm,
+    oxygenSaturationPct: input.oxygenSaturationPct,
+    movementLevel: input.movementLevel,
+    sleepState: input.sleepState,
+    sockConnected: input.sockConnected,
+    batteryPct: input.batteryPct,
+    sourceDeviceId: input.sourceDeviceId,
+    sourceSessionId: input.sourceSessionId,
+    rawPayload: input.rawPayload,
+    createdAt: now,
+    updatedAt: now,
+    syncStatus: 'pending',
+    _deleted: false,
+  };
+
+  await db.owletReadings.add(reading);
+  triggerSync();
+  return reading;
+}
+
+export async function ingestOwletReadings(
+  childId: string,
+  inputs: IngestOwletReadingInput[]
+): Promise<number> {
+  if (inputs.length === 0) return 0;
+
+  const now = Date.now();
+  const readings: OwletReading[] = inputs.map(input => ({
+    id: uuidv4(),
+    childId,
+    recordedAt: input.recordedAt,
+    heartRateBpm: input.heartRateBpm,
+    oxygenSaturationPct: input.oxygenSaturationPct,
+    movementLevel: input.movementLevel,
+    sleepState: input.sleepState,
+    sockConnected: input.sockConnected,
+    batteryPct: input.batteryPct,
+    sourceDeviceId: input.sourceDeviceId,
+    sourceSessionId: input.sourceSessionId,
+    rawPayload: input.rawPayload,
+    createdAt: now,
+    updatedAt: now,
+    syncStatus: 'pending',
+    _deleted: false,
+  }));
+
+  await db.owletReadings.bulkAdd(readings);
+  triggerSync();
+  return readings.length;
+}
+
+export async function getLatestOwletReading(childId: string): Promise<OwletReading | undefined> {
+  const readings = await db.owletReadings
+    .where('childId')
+    .equals(childId)
+    .and(r => !r._deleted)
+    .reverse()
+    .sortBy('recordedAt');
+
+  return readings[0];
+}
+
+export async function getOwletReadingsForRange(
+  childId: string,
+  startTime: number,
+  endTime: number,
+  limit: number = 500
+): Promise<OwletReading[]> {
+  const readings = await db.owletReadings
+    .where('childId')
+    .equals(childId)
+    .and(r => !r._deleted && r.recordedAt >= startTime && r.recordedAt <= endTime)
+    .sortBy('recordedAt');
+
+  if (readings.length <= limit) return readings;
+  return readings.slice(readings.length - limit);
+}
+
+export async function pruneOwletReadingsBefore(cutoffTime: number): Promise<number> {
+  const oldReadings = await db.owletReadings
+    .where('recordedAt')
+    .below(cutoffTime)
+    .toArray();
+
+  if (oldReadings.length === 0) return 0;
+
+  const ids = oldReadings.map(r => r.id);
+  await db.owletReadings.where('id').anyOf(ids).delete();
+  return ids.length;
+}
+

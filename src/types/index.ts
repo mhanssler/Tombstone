@@ -10,6 +10,8 @@ export type DiaperType = 'wet' | 'dirty' | 'both' | 'dry';
 
 export type ActivityType = 'sleep' | 'feeding' | 'diaper' | 'pump';
 
+export type OwletSleepState = 'awake' | 'asleep' | 'light_sleep' | 'deep_sleep' | 'unknown';
+
 // Base interface for all syncable entities
 export interface SyncableEntity {
   id: string;
@@ -71,6 +73,21 @@ export interface GrowthMeasurement extends SyncableEntity {
   weightKg?: number;
   heightCm?: number;
   headCircumferenceCm?: number;
+}
+
+// Owlet reading snapshot
+export interface OwletReading extends SyncableEntity {
+  childId: string;
+  recordedAt: number; // Unix timestamp ms when the reading was captured
+  heartRateBpm?: number;
+  oxygenSaturationPct?: number;
+  movementLevel?: number;
+  sleepState?: OwletSleepState;
+  sockConnected?: boolean;
+  batteryPct?: number;
+  sourceDeviceId?: string;
+  sourceSessionId?: string;
+  rawPayload?: Record<string, unknown>;
 }
 
 // Active timer state (stored separately for quick access)
