@@ -24,3 +24,7 @@ npm-debug.log*
 # PWA generated files
 dev-dist/
 .vercel
+
+# Owlet bridge local files
+scripts/.env.owlet-bridge
+scripts/.venv/
