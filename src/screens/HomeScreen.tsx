@@ -6,6 +6,7 @@ import {
   WakeWindowDisplay,
   DaySummaryCard,
   ActivityCard,
+  OwletStatusCard,
 } from '@/components';
 import { SleepPrediction } from '@/components/SleepPrediction';
 import { FeedingTimer } from '@/components/FeedingTimer';
@@ -21,6 +22,7 @@ import {
   useTodaySummary,
   useLastPoop,
   useLastPee,
+  useLatestOwletReading,
 } from '@/hooks';
 import {
   startSleep,
@@ -54,6 +56,7 @@ export function HomeScreen() {
   const summary = useTodaySummary(child?.id);
   const lastPoop = useLastPoop(child?.id);
   const lastPee = useLastPee(child?.id);
+  const latestOwlet = useLatestOwletReading(child?.id);
 
   // Initialize child on first load
   useEffect(() => {
@@ -208,6 +211,9 @@ export function HomeScreen() {
           />
         )}
 
+        {/* Owlet Status */}
+        <OwletStatusCard reading={latestOwlet} />
+
         {/* Diaper Buttons */}
         <div>
           <h2 className="text-sm font-medium text-sand-400 mb-2">Log Diaper</h2>
@@ -297,3 +303,4 @@ export function HomeScreen() {
     </div>
   );
 }
+

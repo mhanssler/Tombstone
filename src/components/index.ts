@@ -4,3 +4,4 @@ export { ActivityCard } from './ActivityCard';
 export { WakeWindowDisplay } from './WakeWindowDisplay';
 export { DaySummaryCard } from './DaySummaryCard';
 export { BottomNav } from './BottomNav';
+export { OwletStatusCard } from './OwletStatusCard';

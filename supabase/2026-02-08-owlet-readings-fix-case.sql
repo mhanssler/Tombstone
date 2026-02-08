@@ -1,19 +1,65 @@
--- Fix Owlet column casing to match Tombstone app payload keys.
--- Run this if you created owlet_readings with unquoted camelCase names.
+-- Fix Owlet column casing to match Tombstone payload keys.
+-- Safe to run multiple times.
 
-ALTER TABLE IF EXISTS owlet_readings RENAME COLUMN childid TO "childId";
-ALTER TABLE IF EXISTS owlet_readings RENAME COLUMN recordedat TO "recordedAt";
-ALTER TABLE IF EXISTS owlet_readings RENAME COLUMN heartratebpm TO "heartRateBpm";
-ALTER TABLE IF EXISTS owlet_readings RENAME COLUMN oxygensaturationpct TO "oxygenSaturationPct";
-ALTER TABLE IF EXISTS owlet_readings RENAME COLUMN movementlevel TO "movementLevel";
-ALTER TABLE IF EXISTS owlet_readings RENAME COLUMN sleepstate TO "sleepState";
-ALTER TABLE IF EXISTS owlet_readings RENAME COLUMN sockconnected TO "sockConnected";
-ALTER TABLE IF EXISTS owlet_readings RENAME COLUMN batterypct TO "batteryPct";
-ALTER TABLE IF EXISTS owlet_readings RENAME COLUMN sourcedeviceid TO "sourceDeviceId";
-ALTER TABLE IF EXISTS owlet_readings RENAME COLUMN sourcesessionid TO "sourceSessionId";
-ALTER TABLE IF EXISTS owlet_readings RENAME COLUMN rawpayload TO "rawPayload";
-ALTER TABLE IF EXISTS owlet_readings RENAME COLUMN createdat TO "createdAt";
-ALTER TABLE IF EXISTS owlet_readings RENAME COLUMN updatedat TO "updatedAt";
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='owlet_readings' AND column_name='childid') THEN
+    EXECUTE 'ALTER TABLE owlet_readings RENAME COLUMN childid TO "childId"';
+  END IF;
+
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='owlet_readings' AND column_name='recordedat') THEN
+    EXECUTE 'ALTER TABLE owlet_readings RENAME COLUMN recordedat TO "recordedAt"';
+  END IF;
+
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='owlet_readings' AND column_name='heartratebpm') THEN
+    EXECUTE 'ALTER TABLE owlet_readings RENAME COLUMN heartratebpm TO "heartRateBpm"';
+  END IF;
+
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='owlet_readings' AND column_name='oxygensaturationpct') THEN
+    EXECUTE 'ALTER TABLE owlet_readings RENAME COLUMN oxygensaturationpct TO "oxygenSaturationPct"';
+  END IF;
+
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='owlet_readings' AND column_name='movementlevel') THEN
+    EXECUTE 'ALTER TABLE owlet_readings RENAME COLUMN movementlevel TO "movementLevel"';
+  END IF;
+
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='owlet_readings' AND column_name='sleepstate') THEN
+    EXECUTE 'ALTER TABLE owlet_readings RENAME COLUMN sleepstate TO "sleepState"';
+  END IF;
+
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='owlet_readings' AND column_name='sockconnected') THEN
+    EXECUTE 'ALTER TABLE owlet_readings RENAME COLUMN sockconnected TO "sockConnected"';
+  END IF;
+
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='owlet_readings' AND column_name='batterypct') THEN
+    EXECUTE 'ALTER TABLE owlet_readings RENAME COLUMN batterypct TO "batteryPct"';
+  END IF;
+
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='owlet_readings' AND column_name='sourcedeviceid') THEN
+    EXECUTE 'ALTER TABLE owlet_readings RENAME COLUMN sourcedeviceid TO "sourceDeviceId"';
+  END IF;
+
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='owlet_readings' AND column_name='sourcesessionid') THEN
+    EXECUTE 'ALTER TABLE owlet_readings RENAME COLUMN sourcesessionid TO "sourceSessionId"';
+  END IF;
+
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='owlet_readings' AND column_name='rawpayload') THEN
+    EXECUTE 'ALTER TABLE owlet_readings RENAME COLUMN rawpayload TO "rawPayload"';
+  END IF;
+
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='owlet_readings' AND column_name='createdat') THEN
+    EXECUTE 'ALTER TABLE owlet_readings RENAME COLUMN createdat TO "createdAt"';
+  END IF;
+
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='owlet_readings' AND column_name='updatedat') THEN
+    EXECUTE 'ALTER TABLE owlet_readings RENAME COLUMN updatedat TO "updatedAt"';
+  END IF;
+
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='owlet_readings' AND column_name='syncstatus') THEN
+    EXECUTE 'ALTER TABLE owlet_readings RENAME COLUMN syncstatus TO "syncStatus"';
+  END IF;
+END
+$$;
 
 DROP INDEX IF EXISTS idx_owlet_readings_child_recorded;
 DROP INDEX IF EXISTS idx_owlet_readings_updated;
