@@ -19,4 +19,11 @@ Get-Content $EnvFile | ForEach-Object {
 }
 
 Set-Location $PSScriptRoot
-& $pythonExe $bridgeScript 2>&1 | Tee-Object -FilePath $logFile -Append
+
+# Windows PowerShell 5.1 turns native stderr into error records (NativeCommandError).
+# Use cmd.exe redirection so both stdout/stderr go to the log without PowerShell error handling.
+$pythonExeQuoted = '"' + $pythonExe + '"'
+$bridgeScriptQuoted = '"' + $bridgeScript + '"'
+$logFileQuoted = '"' + $logFile + '"'
+
+cmd.exe /c "$pythonExeQuoted -u $bridgeScriptQuoted >> $logFileQuoted 2>&1"

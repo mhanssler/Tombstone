@@ -114,15 +114,17 @@ describe('Database Queries', () => {
     });
 
     it('should not allow starting sleep when already sleeping', async () => {
-      await startSleep(testChildId, 'nap');
+      const session = await startSleep(testChildId, 'nap');
       const activeSession = await getActiveSleepSession();
-      expect(activeSession).toBeDefined();
+      expect(activeSession?.id).toBe(session.id);
 
-      // Starting another sleep should overwrite the active timer
-      // This is a potential bug - should we prevent this?
-      const newSession = await startSleep(testChildId, 'night');
-      const newActiveSession = await getActiveSleepSession();
-      expect(newActiveSession?.id).toBe(newSession.id);
+      // Starting another sleep should return the existing open session
+      // rather than creating an overlapping one.
+      const secondCall = await startSleep(testChildId, 'night');
+      expect(secondCall.id).toBe(session.id);
+
+      const stillActive = await getActiveSleepSession();
+      expect(stillActive?.id).toBe(session.id);
     });
   });
 

@@ -115,13 +115,28 @@ async function pullChanges<T extends SyncableEntity>(
 ): Promise<{ count: number; errors: string[] }> {
   const errors: string[] = [];
   const lastSync = getLastSyncTime(remoteTableName);
+  const now = Date.now();
 
   // Fetch records updated since last sync (if lastSync is 0, fetch ALL records)
   let query = getSupabase()
     .from(remoteTableName)
     .select('*');
 
-  if (lastSync > 0) {
+  // Owlet can generate a lot of rows while the app is not visible/offline.
+  // When resuming after a gap, fast-forward by pulling a recent window in one batch,
+  // rather than replaying every missed row and "animating" the UI as it backfills.
+  const isOwlet = remoteTableName === 'owlet_readings';
+  const OWLET_FAST_FORWARD_AFTER_MS = 1000 * 60 * 3; // 3 minutes without sync
+  const OWLET_WINDOW_MS = 1000 * 60 * 60; // last 60 minutes
+  const owletFastForward = isOwlet && (lastSync === 0 || now - lastSync > OWLET_FAST_FORWARD_AFTER_MS);
+
+  if (owletFastForward) {
+    const cutoff = now - OWLET_WINDOW_MS;
+    query = query
+      .gte('recordedAt', cutoff)
+      .order('recordedAt', { ascending: true })
+      .limit(600); // safety cap (10s cadence => 360 points/hour)
+  } else if (lastSync > 0) {
     query = query.gt('updatedAt', lastSync);
   }
 
@@ -137,6 +152,21 @@ async function pullChanges<T extends SyncableEntity>(
   }
 
   let updated = 0;
+
+  // Apply Owlet window in a single batch to avoid UI "replaying" old points.
+  if (owletFastForward) {
+    const records = (remoteRecords as T[]).map(r => ({ ...r, syncStatus: 'synced' as const }));
+
+    await db.transaction('rw', localTable, async () => {
+      await localTable.bulkPut(records);
+    });
+
+    updated = records.length;
+
+    const maxUpdatedAt = Math.max(...(remoteRecords as T[]).map(r => r.updatedAt));
+    setLastSyncTime(remoteTableName, maxUpdatedAt);
+    return { count: updated, errors };
+  }
 
   // Apply Last-Write-Wins conflict resolution
   for (const remote of remoteRecords as T[]) {

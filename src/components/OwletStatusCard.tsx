@@ -1,4 +1,4 @@
-import { Heart, Activity, Battery, Wifi, WifiOff } from 'lucide-react';
+import { Heart, Activity, Battery, Wifi, WifiOff, Moon, Baby } from 'lucide-react';
 import { formatRelativeTime } from '@/utils/time';
 import { LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid } from 'recharts';
 import type { OwletReading } from '@/types';
@@ -29,8 +29,10 @@ export function OwletStatusCard({ reading, trendReadings = [] }: OwletStatusCard
   }
 
   const readingAgeMs = Date.now() - reading.recordedAt;
-  const isStale = readingAgeMs > 1000 * 60 * 5;
+  const isStale = readingAgeMs > 1000 * 60 * 1;
   const isSockConnected = reading.sockConnected === true;
+  const sleepState = reading.sleepState || 'unknown';
+  const isSockOffOrUnknown = !isSockConnected || sleepState === 'unknown';
   const trendData = trendReadings
     .map(item => ({
       ts: item.recordedAt,
@@ -51,6 +53,21 @@ export function OwletStatusCard({ reading, trendReadings = [] }: OwletStatusCard
           Updated {formatRelativeTime(reading.recordedAt)}
         </span>
       </div>
+
+      {(isStale || isSockOffOrUnknown) && (
+        <div className="mb-3 rounded-xl border border-leather-800/40 bg-sand-950/50 px-3 py-2 text-sm text-sand-300">
+          {isStale && (
+            <div>
+              No recent readings. If you expect live data, make sure the bridge is running.
+            </div>
+          )}
+          {!isSockConnected && (
+            <div className={isStale ? 'mt-1' : ''}>
+              Sock looks disconnected/off. Put the sock on and ensure it is connected in the Owlet app.
+            </div>
+          )}
+        </div>
+      )}
 
       <div className="grid grid-cols-2 gap-3">
         <div className="rounded-xl bg-sand-950/60 p-3 border border-leather-800/40">
@@ -83,6 +100,24 @@ export function OwletStatusCard({ reading, trendReadings = [] }: OwletStatusCard
             Sock Link
           </div>
           <div className="text-sand-100 text-xl font-semibold mt-1">{isSockConnected ? 'Connected' : 'Disconnected'}</div>
+        </div>
+
+        <div className="rounded-xl bg-sand-950/60 p-3 border border-leather-800/40">
+          <div className="flex items-center gap-2 text-sand-400 text-xs uppercase tracking-wide">
+            <Moon className="w-4 h-4 text-indigo-300" />
+            Sleep Status
+          </div>
+          <div className="text-sand-100 text-xl font-semibold mt-1">
+            {sleepState === 'asleep' ? 'Asleep' : sleepState === 'awake' ? 'Awake' : 'Unknown'}
+          </div>
+        </div>
+
+        <div className="rounded-xl bg-sand-950/60 p-3 border border-leather-800/40">
+          <div className="flex items-center gap-2 text-sand-400 text-xs uppercase tracking-wide">
+            <Baby className="w-4 h-4 text-emerald-300" />
+            Sock Worn
+          </div>
+          <div className="text-sand-100 text-xl font-semibold mt-1">{isSockConnected ? 'Yes' : 'No'}</div>
         </div>
       </div>
 

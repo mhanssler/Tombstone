@@ -18,6 +18,50 @@ import type {
 
 export async function startSleep(childId: string, type: SleepType = 'nap'): Promise<SleepSession> {
   const now = Date.now();
+
+  // Enforce a single active sleep session per child.
+  // If a session is already open (possibly started on another device), reuse it
+  // instead of creating an overlapping session. If multiple open sessions exist
+  // (bug/edge case), close all but the most recent to prevent overlap.
+  const openSessions = await db.sleepSessions
+    .where('childId')
+    .equals(childId)
+    .and(s => !s._deleted && !s.endTime && s.startTime > 0)
+    .toArray();
+
+  if (openSessions.length > 0) {
+    const mostRecent = openSessions.reduce((latest, current) =>
+      current.startTime > latest.startTime ? current : latest
+    );
+
+    // Close any other open sessions to prevent overlapping sleep.
+    const toClose = openSessions.filter(s => s.id !== mostRecent.id);
+    if (toClose.length > 0) {
+      await db.sleepSessions.bulkUpdate(
+        toClose.map(s => ({
+          key: s.id,
+          changes: {
+            endTime: Math.max(s.startTime + 1, mostRecent.startTime),
+            updatedAt: now,
+            syncStatus: 'pending' as const,
+          },
+        }))
+      );
+      triggerSync();
+    }
+
+    // Ensure the active timer points at the most recent open session.
+    const timer: ActiveTimer = {
+      id: 'sleep',
+      activityType: 'sleep',
+      activityId: mostRecent.id,
+      startTime: mostRecent.startTime,
+    };
+    await db.activeTimers.put(timer);
+
+    return mostRecent;
+  }
+
   const session: SleepSession = {
     id: uuidv4(),
     childId,
