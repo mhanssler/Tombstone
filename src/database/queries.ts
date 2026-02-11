@@ -59,6 +59,8 @@ export async function startSleep(childId: string, type: SleepType = 'nap'): Prom
     };
     await db.activeTimers.put(timer);
 
+    // Ensure other devices see the open session quickly.
+    triggerSync();
     return mostRecent;
   }
 
@@ -84,6 +86,8 @@ export async function startSleep(childId: string, type: SleepType = 'nap'): Prom
   };
   await db.activeTimers.put(timer);
 
+  // Ensure other devices see the open session quickly.
+  triggerSync();
   return session;
 }
 

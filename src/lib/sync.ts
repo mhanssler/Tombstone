@@ -60,13 +60,27 @@ const tableMapping: Record<string, TableName> = {
 function getLastSyncTime(tableName: string): number {
   const key = `lastSync_${tableName}`;
   const stored = localStorage.getItem(key);
-  return stored ? parseInt(stored, 10) : 0;
+  const parsed = stored ? parseInt(stored, 10) : 0;
+
+  // If a device clock is ahead, a future cursor can cause it to miss updates from other devices.
+  // Reset to force a catch-up pull.
+  const now = Date.now();
+  const FUTURE_TOLERANCE_MS = 1000 * 60 * 5; // 5 minutes
+  if (parsed > now + FUTURE_TOLERANCE_MS) {
+    console.warn(`[Sync] ${key} is in the future (${parsed} > ${now}); resetting cursor to recover cross-device updates`);
+    localStorage.removeItem(key);
+    return 0;
+  }
+
+  return parsed;
 }
 
 // Set the last sync timestamp for a table
 function setLastSyncTime(tableName: string, time: number): void {
   const key = `lastSync_${tableName}`;
-  localStorage.setItem(key, time.toString());
+  // Never persist a cursor beyond this device's "now" (see getLastSyncTime note).
+  const clamped = Math.min(time, Date.now());
+  localStorage.setItem(key, clamped.toString());
 }
 
 // Push pending local changes to Supabase
@@ -137,7 +151,11 @@ async function pullChanges<T extends SyncableEntity>(
       .order('recordedAt', { ascending: true })
       .limit(600); // safety cap (10s cadence => 360 points/hour)
   } else if (lastSync > 0) {
-    query = query.gt('updatedAt', lastSync);
+    // Backstop window protects against clock drift between devices (client-generated updatedAt).
+    // Without this, a device with an ahead clock can permanently miss updates created by another device.
+    const BACKSTOP_MS = 1000 * 60 * 60 * 24 * 30; // 30 days
+    const backstop = now - BACKSTOP_MS;
+    query = query.or(`updatedAt.gt.${lastSync},updatedAt.gte.${backstop}`);
   }
 
   const { data: remoteRecords, error } = await query;

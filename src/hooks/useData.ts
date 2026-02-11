@@ -152,6 +152,10 @@ export function useTodaySummary(childId: string | undefined) {
 
   const napCount = sleepSessions.filter(s => s.type === 'nap' && s.endTime).length;
 
+  const bottleFeedings = feedings.filter(f => f.type === 'bottle');
+  const bottleCount = bottleFeedings.length;
+  const totalBottleMl = bottleFeedings.reduce((sum, f) => sum + (f.amount || 0), 0);
+
   const totalPumpMl = pumps.reduce((total, p) => total + (p.amount || 0), 0);
 
   return {
@@ -159,6 +163,8 @@ export function useTodaySummary(childId: string | undefined) {
     totalSleepHours: Math.round((totalSleepMs / (1000 * 60 * 60)) * 10) / 10,
     napCount,
     feedingCount: feedings.length,
+    bottleCount,
+    totalBottleMl,
     diaperCount: diapers.length,
     pumpCount: pumps.length,
     totalPumpMl,

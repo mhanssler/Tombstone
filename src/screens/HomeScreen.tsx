@@ -280,8 +280,8 @@ export function HomeScreen() {
           napCount={summary.napCount}
           feedingCount={summary.feedingCount}
           diaperCount={summary.diaperCount}
-          pumpCount={summary.pumpCount}
-          totalPumpMl={summary.totalPumpMl}
+          bottleCount={summary.bottleCount}
+          totalBottleMl={summary.totalBottleMl}
           lastPoopTime={lastPoop?.time}
           lastPeeTime={lastPee?.time}
         />

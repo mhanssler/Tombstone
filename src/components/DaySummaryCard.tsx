@@ -5,8 +5,8 @@ interface DaySummaryCardProps {
   napCount: number;
   feedingCount: number;
   diaperCount: number;
-  pumpCount?: number;
-  totalPumpMl?: number;
+  bottleCount?: number;
+  totalBottleMl?: number;
   lastPoopTime?: number;
   lastPeeTime?: number;
 }
@@ -42,8 +42,8 @@ export function DaySummaryCard({
   napCount,
   feedingCount,
   diaperCount,
-  pumpCount = 0,
-  totalPumpMl = 0,
+  bottleCount = 0,
+  totalBottleMl = 0,
   lastPoopTime,
   lastPeeTime,
 }: DaySummaryCardProps) {
@@ -81,13 +81,16 @@ export function DaySummaryCard({
           <div className="text-xs text-sand-500">diapers</div>
         </div>
 
-        {/* Pumps */}
+        {/* Bottles */}
         <div className="flex flex-col items-center">
           <div className="w-10 h-10 rounded-full bg-purple-900/40 flex items-center justify-center mb-2">
             <span className="text-lg">🍼</span>
           </div>
-          <div className="text-xl font-bold text-sand-100">{pumpCount}</div>
-          <div className="text-xs text-sand-500">{totalPumpMl}ml</div>
+          <div className="text-xl font-bold text-sand-100">
+            {Math.round(totalBottleMl)}
+            <span className="text-xs">ml</span>
+          </div>
+          <div className="text-xs text-sand-500">{bottleCount} bottles</div>
         </div>
       </div>
       
