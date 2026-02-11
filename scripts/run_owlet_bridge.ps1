@@ -15,7 +15,9 @@ if (!(Test-Path $EnvFile)) { throw "Bridge env file not found at $EnvFile" }
 Get-Content $EnvFile | ForEach-Object {
   if ($_ -match '^\s*#' -or $_ -match '^\s*$') { return }
   $name, $value = $_ -split '=', 2
-  [Environment]::SetEnvironmentVariable($name, $value)
+  $cleanName = $name.Trim()
+  $cleanValue = $value.Trim()
+  [Environment]::SetEnvironmentVariable($cleanName, $cleanValue, 'Process')
 }
 
 Set-Location $PSScriptRoot
