@@ -200,6 +200,23 @@ def build_row(child_id: str, dsn: str, props: Dict[str, Any]) -> Dict[str, Any]:
     }
 
 
+def supabase_error_hint(status_code: int, response_text: str) -> Optional[str]:
+    lowered = response_text.lower()
+    if "invalid api key" in lowered:
+        return (
+            "Check that SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are from the same project, "
+            "and that the key was copied completely."
+        )
+    if "42501" in lowered or "row-level security" in lowered:
+        return (
+            "Bridge upserts require a service_role key. Do not use anon/authenticated keys for "
+            "SUPABASE_SERVICE_ROLE_KEY."
+        )
+    if status_code in (401, 403):
+        return "Auth failed. Bridge writes require SUPABASE_SERVICE_ROLE_KEY (service_role), not anon."
+    return None
+
+
 def upsert_row(supabase_url: str, service_role_key: str, row: Dict[str, Any]) -> None:
     url = f"{supabase_url.rstrip('/')}{UPSERT_ENDPOINT}"
     headers = {
@@ -210,7 +227,11 @@ def upsert_row(supabase_url: str, service_role_key: str, row: Dict[str, Any]) ->
     }
     response = requests.post(url, headers=headers, json=[row], timeout=20)
     if response.status_code >= 400:
-        raise RuntimeError(f"Supabase upsert failed ({response.status_code}): {response.text[:400]}")
+        body = response.text[:400]
+        hint = supabase_error_hint(response.status_code, response.text)
+        if hint:
+            raise RuntimeError(f"Supabase upsert failed ({response.status_code}): {body} | Hint: {hint}")
+        raise RuntimeError(f"Supabase upsert failed ({response.status_code}): {body}")
 
 
 async def choose_device_dsn(api: OwletAPI, configured_dsn: Optional[str]) -> str:

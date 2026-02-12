@@ -140,18 +140,42 @@ CREATE POLICY "Allow all for authenticated" ON diaper_changes FOR ALL USING (aut
 CREATE POLICY "Allow all for authenticated" ON growth_measurements FOR ALL USING (auth.role() = 'authenticated');
 ```
 
-### 2. Configure the App
+### 2. Configure Env Vars (Frontend vs Bridge)
 
-1. Copy `.env.example` to `.env`
-2. Get your Supabase URL and anon key from **Project Settings > API**
-3. Add them to `.env`:
+Use this mapping exactly. Most sync issues come from mixing these up.
 
-```
-VITE_SUPABASE_URL=https://your-project.supabase.co
-VITE_SUPABASE_ANON_KEY=your-anon-key
-```
+| Credential | Env var(s) | Where it belongs | Safe in frontend/client? |
+| --- | --- | --- | --- |
+| Supabase Project URL | `VITE_SUPABASE_URL` (frontend), `SUPABASE_URL` (bridge) | Vercel env + bridge env | Yes |
+| Supabase anon key | `VITE_SUPABASE_ANON_KEY` | Vercel env (browser app) | Yes (designed to be public) |
+| Supabase service_role key | `SUPABASE_SERVICE_ROLE_KEY` | Server-side only (`scripts/.env.owlet-bridge`) | No |
 
-4. Rebuild and redeploy
+#### Frontend (Vercel / browser app)
+
+1. Copy `.env.example` to `.env` for local app development.
+2. Set:
+   - `VITE_SUPABASE_URL=https://your-project.supabase.co`
+   - `VITE_SUPABASE_ANON_KEY=your-anon-key`
+3. In Vercel Project Settings -> Environment Variables, set the same two `VITE_` values.
+4. Redeploy after changes.
+
+#### Owlet bridge writer (local script)
+
+Set these in `scripts/.env.owlet-bridge`:
+
+- `SUPABASE_URL=https://your-project.supabase.co`
+- `SUPABASE_SERVICE_ROLE_KEY=your-service-role-key`
+
+Rules:
+
+1. Never put `service_role` in any `VITE_` variable.
+2. Never put `anon` in `SUPABASE_SERVICE_ROLE_KEY`.
+3. If `service_role` was ever exposed in frontend/Vercel client vars, rotate it immediately.
+
+Quick error decoding:
+
+- `401 Invalid API key`: wrong key for that project URL, typo, or rotated key.
+- `42501 ... violates row-level security`: bridge is likely using anon/authenticated credentials instead of service role.
 
 ## Installing on Your Phone
 
