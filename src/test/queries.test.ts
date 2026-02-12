@@ -15,12 +15,6 @@ import {
   getActiveFeeding,
   getFeedingsForDay,
   deleteFeedingSession,
-  startPump,
-  stopPump,
-  cancelPump,
-  getActivePump,
-  getPumpSessionsForDay,
-  deletePumpSession,
   logDiaper,
   getDiapersForDay,
   deleteDiaperChange,
@@ -34,7 +28,6 @@ describe('Database Queries', () => {
     // Clear all data before each test
     await db.sleepSessions.clear();
     await db.feedingSessions.clear();
-    await db.pumpSessions.clear();
     await db.diaperChanges.clear();
     await db.activeTimers.clear();
   });
@@ -43,7 +36,6 @@ describe('Database Queries', () => {
     // Clean up after each test
     await db.sleepSessions.clear();
     await db.feedingSessions.clear();
-    await db.pumpSessions.clear();
     await db.diaperChanges.clear();
     await db.activeTimers.clear();
   });
@@ -160,14 +152,12 @@ describe('Database Queries', () => {
       expect(activeFeeding).toBeUndefined();
     });
 
-    it('should cancel a feeding session and keep a sync tombstone', async () => {
+    it('should cancel a feeding session (hard delete)', async () => {
       const session = await startFeeding(testChildId, 'bottle');
       await cancelFeeding(session.id);
 
-      const canceledSession = await db.feedingSessions.get(session.id);
-      expect(canceledSession?._deleted).toBe(true);
-      expect(canceledSession?.syncStatus).toBe('pending');
-      expect(canceledSession?.endTime).toBeDefined();
+      const deletedSession = await db.feedingSessions.get(session.id);
+      expect(deletedSession).toBeUndefined();
 
       const activeFeeding = await getActiveFeeding();
       expect(activeFeeding).toBeUndefined();
@@ -203,59 +193,6 @@ describe('Database Queries', () => {
 
       const feedings = await getFeedingsForDay(testChildId, new Date());
       expect(feedings.length).toBe(0);
-    });
-  });
-
-  describe('Pump Sessions', () => {
-    it('should start a pump session', async () => {
-      const session = await startPump(testChildId);
-
-      expect(session.id).toBeDefined();
-      expect(session.startTime).toBeDefined();
-      expect(session.endTime).toBeUndefined();
-
-      const activePump = await getActivePump();
-      expect(activePump?.id).toBe(session.id);
-    });
-
-    it('should stop a pump session with amount', async () => {
-      const session = await startPump(testChildId);
-      const stoppedSession = await stopPump(session.id, 90);
-
-      expect(stoppedSession?.endTime).toBeDefined();
-      expect(stoppedSession?.amount).toBe(90);
-
-      const activePump = await getActivePump();
-      expect(activePump).toBeUndefined();
-    });
-
-    it('should cancel a pump session and keep a sync tombstone', async () => {
-      const session = await startPump(testChildId);
-      await cancelPump(session.id);
-
-      const canceledSession = await db.pumpSessions.get(session.id);
-      expect(canceledSession?._deleted).toBe(true);
-      expect(canceledSession?.syncStatus).toBe('pending');
-      expect(canceledSession?.endTime).toBeDefined();
-
-      const activePump = await getActivePump();
-      expect(activePump).toBeUndefined();
-    });
-
-    it('should get pump sessions for a specific day', async () => {
-      const today = new Date();
-      await startPump(testChildId);
-
-      const pumps = await getPumpSessionsForDay(testChildId, today);
-      expect(pumps.length).toBe(1);
-    });
-
-    it('should soft delete a pump session', async () => {
-      const session = await startPump(testChildId);
-      await deletePumpSession(session.id);
-
-      const pumps = await getPumpSessionsForDay(testChildId, new Date());
-      expect(pumps.length).toBe(0);
     });
   });
 

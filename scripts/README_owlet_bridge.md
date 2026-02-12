@@ -20,7 +20,7 @@ Copy-Item .env.owlet-bridge.example .env.owlet-bridge
 
 Edit `scripts/.env.owlet-bridge` with real values.
 
-## 3. Run (foreground)
+## 3. Run
 
 ```powershell
 cd scripts
@@ -33,36 +33,7 @@ Get-Content .env.owlet-bridge | ForEach-Object {
 python owlet_bridge.py
 ```
 
-## 4. Run as a daemon on Windows (Scheduled Task)
-
-Install/update the task:
-
-```powershell
-cd scripts
-.\install_owlet_bridge_task.ps1 -RunNow
-```
-
-If you want it to run under `SYSTEM` instead of your login:
-
-```powershell
-.\install_owlet_bridge_task.ps1 -RunNow -UseSystemAccount
-```
-
-Manage task lifecycle:
-
-```powershell
-.\manage_owlet_bridge_task.ps1 -Action status
-.\manage_owlet_bridge_task.ps1 -Action stop
-.\manage_owlet_bridge_task.ps1 -Action start
-.\manage_owlet_bridge_task.ps1 -Action logs -Tail 200
-.\manage_owlet_bridge_task.ps1 -Action remove
-```
-
-The task executes `run_owlet_bridge.ps1`, which writes logs to:
-
-- `scripts/owlet_bridge.log`
-
-## 5. Verify Data
+## 4. Verify Data
 
 In Supabase SQL editor:
 
@@ -78,6 +49,3 @@ limit 20;
 - Uses deterministic UUID from `DSN:timestamp` to dedupe upserts.
 - Runs indefinitely and re-authenticates on recoverable errors.
 - Keep this process on a trusted machine; service role key has elevated permissions.
-- For local Docker Supabase, use:
-  - `SUPABASE_URL=http://localhost:54321`
-  - `SUPABASE_SERVICE_ROLE_KEY=<SERVICE_ROLE_KEY from .env.docker>`

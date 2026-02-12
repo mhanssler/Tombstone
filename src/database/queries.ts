@@ -224,14 +224,8 @@ export async function stopFeeding(sessionId: string, amount?: number, vitaminD?:
 }
 
 export async function cancelFeeding(sessionId: string): Promise<void> {
-  // Soft-delete so cancellation syncs to Supabase and cannot be resurrected.
-  const now = Date.now();
-  await db.feedingSessions.update(sessionId, {
-    _deleted: true,
-    endTime: now,
-    updatedAt: now,
-    syncStatus: 'pending',
-  });
+  // Delete the feeding session and clear the timer
+  await db.feedingSessions.delete(sessionId);
   await db.activeTimers.delete('feeding');
   triggerSync();
 }
@@ -532,14 +526,7 @@ export async function stopPump(sessionId: string, amount?: number): Promise<Pump
 }
 
 export async function cancelPump(sessionId: string): Promise<void> {
-  // Soft-delete so cancellation syncs to Supabase and cannot be resurrected.
-  const now = Date.now();
-  await db.pumpSessions.update(sessionId, {
-    _deleted: true,
-    endTime: now,
-    updatedAt: now,
-    syncStatus: 'pending',
-  });
+  await db.pumpSessions.delete(sessionId);
   await db.activeTimers.delete('pump');
   triggerSync();
 }
