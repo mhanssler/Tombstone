@@ -9,6 +9,9 @@ dist/
 .env.local
 .env.*.local
 .env.docker
+.env.*
+!.env.example
+!.env.docker.example
 
 # IDE
 .vscode/
@@ -28,7 +31,22 @@ dev-dist/
 
 # Owlet bridge local files
 scripts/.env.owlet-bridge
+scripts/.env.owlet-bridge.*
+!scripts/.env.owlet-bridge.example
 scripts/.venv/
+
+# Private keys and certificates
+*.pem
+*.key
+*.p8
+*.p12
+*.crt
+*.cer
+*.der
+*.jks
+*.keystore
+id_rsa
+id_ed25519
 
 # Docker volumes (keep config files, ignore mutable data)
 volumes/db/data/
