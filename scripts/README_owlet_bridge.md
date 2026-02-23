@@ -167,13 +167,32 @@ cd scripts
 .\check_owlet_pipeline.ps1
 ```
 
+Linux equivalent:
+
+```bash
+cd scripts
+./check_owlet_pipeline.sh
+```
+
 Optional custom freshness threshold (minutes):
 
 ```powershell
 .\check_owlet_pipeline.ps1 -StaleMinutes 10
 ```
 
+```bash
+./check_owlet_pipeline.sh --stale-minutes 10
+```
+
+Optional custom service/env/log paths (Linux):
+
+```bash
+./check_owlet_pipeline.sh --service my-daemon --env-file ./env.owlet-bridge --log-file ./owlet_bridge.log
+```
+
 This script validates:
+- systemd daemon is active (`my-daemon` by default)
+- latest bridge `Upserted` log line is fresh enough
 - latest `owlet_readings.recordedAt` is fresh enough
 - recent row count within the threshold window
 - current `sleepState` and `sockConnected` values
@@ -183,6 +202,9 @@ Exit codes:
 - `1` stale data
 - `2` no rows found
 - `3` cannot reach Supabase endpoint
+- `4` daemon not running (Linux script)
+- `5` config/env issue (Linux script)
+- `6` no recent upsert in log (Linux script)
 
 ## Notes
 
