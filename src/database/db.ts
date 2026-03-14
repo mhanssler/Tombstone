@@ -7,6 +7,7 @@ import type {
   DiaperChange,
   GrowthMeasurement,
   OwletReading,
+  SolidFoodLog,
   ActiveTimer,
   AppSettings,
 } from '@/types';
@@ -19,6 +20,7 @@ export class BabySleepTrackerDB extends Dexie {
   diaperChanges!: Table<DiaperChange>;
   growthMeasurements!: Table<GrowthMeasurement>;
   owletReadings!: Table<OwletReading>;
+  solidFoodLogs!: Table<SolidFoodLog>;
   activeTimers!: Table<ActiveTimer>;
   settings!: Table<AppSettings>;
 
@@ -57,6 +59,20 @@ export class BabySleepTrackerDB extends Dexie {
       diaperChanges: 'id, childId, time, syncStatus, updatedAt, _deleted',
       growthMeasurements: 'id, childId, date, syncStatus, updatedAt, _deleted',
       owletReadings: 'id, childId, recordedAt, syncStatus, updatedAt, _deleted, sourceSessionId',
+      activeTimers: 'id, activityType',
+      settings: 'id',
+    });
+
+    // v4: Add solid food logs table
+    this.version(4).stores({
+      children: 'id, syncStatus, updatedAt, _deleted',
+      sleepSessions: 'id, childId, startTime, endTime, syncStatus, updatedAt, _deleted',
+      feedingSessions: 'id, childId, startTime, syncStatus, updatedAt, _deleted',
+      pumpSessions: 'id, childId, startTime, syncStatus, updatedAt, _deleted',
+      diaperChanges: 'id, childId, time, syncStatus, updatedAt, _deleted',
+      growthMeasurements: 'id, childId, date, syncStatus, updatedAt, _deleted',
+      owletReadings: 'id, childId, recordedAt, syncStatus, updatedAt, _deleted, sourceSessionId',
+      solidFoodLogs: 'id, childId, time, syncStatus, updatedAt, _deleted',
       activeTimers: 'id, activityType',
       settings: 'id',
     });

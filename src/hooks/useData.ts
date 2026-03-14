@@ -8,6 +8,7 @@ import {
   getFeedingsForDay,
   getPumpSessionsForDay,
   getDiapersForDay,
+  getSolidFoodLogsForDay,
   getWakeWindowMinutes,
   getLastSleepSession,
   getLastFeeding,
@@ -16,8 +17,10 @@ import {
   getLastPee,
   getLatestOwletReading,
   getOwletReadingsForRange,
+  getFoodHistory,
+  getRecentFoodIds,
 } from '@/database/queries';
-import type { Child, SleepSession, FeedingSession, PumpSession, DiaperChange, ActiveTimer, OwletReading } from '@/types';
+import type { Child, SleepSession, FeedingSession, PumpSession, DiaperChange, SolidFoodLog, ActiveTimer, OwletReading } from '@/types';
 
 // Get the current child
 export function useCurrentChild(): Child | undefined {
@@ -226,5 +229,40 @@ export function useOwletReadingsForRange(
       return getOwletReadingsForRange(childId, startTime, endTime, limit);
     },
     [childId, startTime, endTime, limit]
+  ) ?? [];
+}
+
+// ============ SOLID FOOD HOOKS ============
+
+// Get solid food logs for a specific day
+export function useSolidFoodLogsForDay(childId: string | undefined, date: Date): SolidFoodLog[] {
+  return useLiveQuery(
+    async () => {
+      if (!childId) return [];
+      return getSolidFoodLogsForDay(childId, date);
+    },
+    [childId, date.toDateString()]
+  ) ?? [];
+}
+
+// Get food history: foodId → last served timestamp
+export function useFoodHistory(childId: string | undefined): Map<string, number> {
+  return useLiveQuery(
+    async () => {
+      if (!childId) return new Map<string, number>();
+      return getFoodHistory(childId);
+    },
+    [childId]
+  ) ?? new Map<string, number>();
+}
+
+// Get recently used food IDs
+export function useRecentFoodIds(childId: string | undefined, days: number = 14): string[] {
+  return useLiveQuery(
+    async () => {
+      if (!childId) return [];
+      return getRecentFoodIds(childId, days);
+    },
+    [childId, days]
   ) ?? [];
 }

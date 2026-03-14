@@ -8,7 +8,15 @@ export type FeedingType = 'breast_left' | 'breast_right' | 'bottle' | 'solids';
 
 export type DiaperType = 'wet' | 'dirty' | 'both' | 'dry';
 
-export type ActivityType = 'sleep' | 'feeding' | 'diaper' | 'pump';
+export type ActivityType = 'sleep' | 'feeding' | 'diaper' | 'pump' | 'solid_food';
+
+export type FoodCategory = 'fruit' | 'vegetable' | 'grain' | 'protein' | 'dairy' | 'other';
+
+export type AllergenGroup = 'milk' | 'egg' | 'peanut' | 'tree_nut' | 'wheat' | 'soy' | 'fish' | 'shellfish' | 'sesame';
+
+export type MealType = 'breakfast' | 'lunch' | 'dinner' | 'snack';
+
+export type ReactionSeverity = 'none' | 'mild' | 'moderate' | 'severe';
 
 export type OwletSleepState = 'awake' | 'asleep' | 'light_sleep' | 'deep_sleep' | 'unknown';
 
@@ -90,6 +98,35 @@ export interface OwletReading extends SyncableEntity {
   rawPayload?: Record<string, unknown>;
 }
 
+// Solid food log entry
+export interface SolidFoodLog extends SyncableEntity {
+  childId: string;
+  time: number; // Unix timestamp ms
+  mealType: MealType;
+  foodItems: SolidFoodItem[]; // embedded list of foods eaten
+  notes?: string;
+  reaction?: ReactionSeverity;
+  reactionNotes?: string;
+}
+
+// Individual food item within a log (embedded, not a separate table)
+export interface SolidFoodItem {
+  foodId: string; // references the food database
+  name: string; // denormalized for display
+  category: FoodCategory;
+  isAllergen: boolean;
+  allergenGroup?: AllergenGroup;
+}
+
+// Static food reference (not synced — lives in code)
+export interface FoodDefinition {
+  id: string;
+  name: string;
+  category: FoodCategory;
+  isAllergen: boolean;
+  allergenGroup?: AllergenGroup;
+}
+
 // Active timer state (stored separately for quick access)
 export interface ActiveTimer {
   id: string;
@@ -115,7 +152,7 @@ export interface TimelineActivity {
   type: ActivityType;
   startTime: number;
   endTime?: number;
-  details: SleepSession | FeedingSession | DiaperChange;
+  details: SleepSession | FeedingSession | DiaperChange | SolidFoodLog;
 }
 
 // Stats summary

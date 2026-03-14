@@ -1,11 +1,24 @@
 import { useState } from 'react';
 import { Moon, Sun, Baby, Droplets, Trash2, X, Check, Edit2 } from 'lucide-react';
 import { formatTime, formatDuration } from '@/utils/time';
-import type { SleepSession, FeedingSession, PumpSession, DiaperChange } from '@/types';
+import type { SleepSession, FeedingSession, PumpSession, DiaperChange, SolidFoodLog } from '@/types';
+
+const MEAL_LABELS: Record<string, string> = {
+  breakfast: 'Breakfast',
+  lunch: 'Lunch',
+  dinner: 'Dinner',
+  snack: 'Snack',
+};
+
+const REACTION_BADGES: Record<string, { label: string; color: string }> = {
+  mild: { label: 'Mild reaction', color: 'bg-yellow-500/20 text-yellow-300' },
+  moderate: { label: 'Moderate reaction', color: 'bg-orange-500/20 text-orange-300' },
+  severe: { label: 'Severe reaction', color: 'bg-red-500/20 text-red-300' },
+};
 
 interface ActivityCardProps {
-  activity: SleepSession | FeedingSession | PumpSession | DiaperChange;
-  type: 'sleep' | 'feeding' | 'diaper' | 'pump';
+  activity: SleepSession | FeedingSession | PumpSession | DiaperChange | SolidFoodLog;
+  type: 'sleep' | 'feeding' | 'diaper' | 'pump' | 'solid_food';
   timeFormat?: '12h' | '24h';
   onDelete?: () => void;
   onEdit?: () => void;
@@ -172,6 +185,42 @@ export function ActivityCard({ activity, type, timeFormat = '12h', onDelete, onE
               </div>
               <div className="text-sm text-sand-500">
                 {formatTime(diaper.time, timeFormat)}
+              </div>
+            </div>
+          </div>
+        );
+      }
+
+      case 'solid_food': {
+        const log = activity as SolidFoodLog;
+        const foodNames = log.foodItems.map(f => f.name).join(', ');
+        const hasAllergen = log.foodItems.some(f => f.isAllergen);
+        const reactionBadge = log.reaction && log.reaction !== 'none' ? REACTION_BADGES[log.reaction] : null;
+
+        return (
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-orange-700 flex items-center justify-center">
+              <span className="text-white text-lg">🥄</span>
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="font-medium text-sand-100 truncate">
+                    {MEAL_LABELS[log.mealType] || log.mealType}
+                  </span>
+                  {hasAllergen && <span className="text-amber-400 text-xs shrink-0">⚠️</span>}
+                  {reactionBadge && (
+                    <span className={`text-xs px-1.5 py-0.5 rounded-md shrink-0 ${reactionBadge.color}`}>
+                      {reactionBadge.label}
+                    </span>
+                  )}
+                </div>
+                <span className="text-orange-400 font-medium text-sm shrink-0">
+                  {log.foodItems.length} item{log.foodItems.length !== 1 ? 's' : ''}
+                </span>
+              </div>
+              <div className="text-sm text-sand-500 truncate">
+                {formatTime(log.time, timeFormat)} — {foodNames}
               </div>
             </div>
           </div>

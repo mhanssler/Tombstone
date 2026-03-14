@@ -5,7 +5,7 @@ import { getSupabase, isSupabaseConfigured } from './supabase';
 import type { SyncableEntity } from '@/types';
 import type { RealtimeChannel } from '@supabase/supabase-js';
 
-type TableName = 'children' | 'sleep_sessions' | 'feeding_sessions' | 'pump_sessions' | 'diaper_changes' | 'growth_measurements' | 'owlet_readings';
+type TableName = 'children' | 'sleep_sessions' | 'feeding_sessions' | 'pump_sessions' | 'diaper_changes' | 'growth_measurements' | 'owlet_readings' | 'solid_food_logs';
 
 interface SyncResult {
   pushed: number;
@@ -55,6 +55,7 @@ const tableMapping: Record<string, TableName> = {
   diaperChanges: 'diaper_changes',
   growthMeasurements: 'growth_measurements',
   owletReadings: 'owlet_readings',
+  solidFoodLogs: 'solid_food_logs',
 };
 
 // Get the last sync timestamp for a table
@@ -269,6 +270,7 @@ export async function syncAll(): Promise<{
     results.diaperChanges = await syncTable('diaperChanges', db.diaperChanges);
     results.growthMeasurements = await syncTable('growthMeasurements', db.growthMeasurements);
     results.owletReadings = await syncTable('owletReadings', db.owletReadings);
+    results.solidFoodLogs = await syncTable('solidFoodLogs', db.solidFoodLogs);
 
     // Aggregate results
     for (const result of Object.values(results)) {
@@ -363,7 +365,7 @@ async function mergeChildren(): Promise<void> {
     const oldChild = allChildren.find((c: { id: string }) => c.id !== DEFAULT_CHILD_ID) || allChildren[0];
 
     // Re-assign all data in Supabase from old child IDs to the fixed ID
-    const dataTables = ['sleep_sessions', 'feeding_sessions', 'pump_sessions', 'diaper_changes', 'owlet_readings'] as const;
+    const dataTables = ['sleep_sessions', 'feeding_sessions', 'pump_sessions', 'diaper_changes', 'owlet_readings', 'solid_food_logs'] as const;
 
     for (const table of dataTables) {
       const { data: records, error: fetchError } = await getSupabase()
@@ -466,6 +468,7 @@ const localTableMapping: Record<TableName, keyof typeof db> = {
   diaper_changes: 'diaperChanges',
   growth_measurements: 'growthMeasurements',
   owlet_readings: 'owletReadings',
+  solid_food_logs: 'solidFoodLogs',
 };
 
 // Handle real-time database changes from Supabase
@@ -554,6 +557,11 @@ export function setupRealtimeSync(): () => void {
       'postgres_changes',
       { event: '*', schema: 'public', table: 'owlet_readings' },
       (payload) => handleRealtimeChange('owlet_readings', payload)
+    )
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'solid_food_logs' },
+      (payload) => handleRealtimeChange('solid_food_logs', payload)
     )
     .subscribe((status) => {
       console.log('[Realtime] Subscription status:', status);

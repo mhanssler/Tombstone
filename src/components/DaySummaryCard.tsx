@@ -7,6 +7,7 @@ interface DaySummaryCardProps {
   diaperCount: number;
   bottleCount?: number;
   totalBottleMl?: number;
+  solidFoodCount?: number;
   lastPoopTime?: number;
   lastPeeTime?: number;
 }
@@ -44,6 +45,7 @@ export function DaySummaryCard({
   diaperCount,
   bottleCount = 0,
   totalBottleMl = 0,
+  solidFoodCount = 0,
   lastPoopTime,
   lastPeeTime,
 }: DaySummaryCardProps) {
@@ -97,6 +99,17 @@ export function DaySummaryCard({
       {/* Last Occurrences Section */}
       <div className="mt-4 pt-3 border-t border-leather-800/30">
         <div className="grid grid-cols-2 gap-3 text-sm">
+          {/* Solid Foods */}
+          {solidFoodCount > 0 && (
+            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-orange-900/30 col-span-2">
+              <span className="text-lg">🥄</span>
+              <div className="flex-1">
+                <div className="text-sand-400 text-xs">Solid meals</div>
+                <div className="font-medium text-orange-300">{solidFoodCount} today</div>
+              </div>
+            </div>
+          )}
+
           {/* Last Poop */}
           <div className={`flex items-center gap-2 px-3 py-2 rounded-lg ${
             poopOverdue 

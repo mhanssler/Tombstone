@@ -11,6 +11,7 @@ import {
 import { SleepPrediction } from '@/components/SleepPrediction';
 import { FeedingTimer } from '@/components/FeedingTimer';
 import { PumpTimer } from '@/components/PumpTimer';
+import { SolidFoodLogger } from '@/components/SolidFoodLogger';
 import {
   useCurrentChild,
   useActiveSleep,
@@ -24,6 +25,7 @@ import {
   useLastPee,
   useOwletReadingsForRange,
   useLatestOwletReading,
+  useSolidFoodLogsForDay,
 } from '@/hooks';
 import {
   startSleep,
@@ -39,15 +41,17 @@ import {
   deleteFeedingSession,
   deletePumpSession,
   deleteDiaperChange,
+  deleteSolidFoodLog,
 } from '@/database/queries';
 import { getOrCreateDefaultChild } from '@/database/db';
 import { classifySleepType } from '@/utils/time';
-import type { DiaperType, SleepSession, FeedingSession, PumpSession, DiaperChange } from '@/types';
+import type { DiaperType, SleepSession, FeedingSession, PumpSession, DiaperChange, SolidFoodLog } from '@/types';
 
 export function HomeScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [nowMs, setNowMs] = useState(Date.now());
+  const [showFoodLogger, setShowFoodLogger] = useState(false);
   const child = useCurrentChild();
   const activeSleep = useActiveSleep();
   const activeFeeding = useActiveFeeding();
@@ -59,6 +63,7 @@ export function HomeScreen() {
   const lastPoop = useLastPoop(child?.id);
   const lastPee = useLastPee(child?.id);
   const latestOwlet = useLatestOwletReading(child?.id);
+  const todaysFoodLogs = useSolidFoodLogsForDay(child?.id, new Date());
   const owletTrend = useOwletReadingsForRange(
     child?.id,
     nowMs - 60 * 60 * 1000,
@@ -159,9 +164,9 @@ export function HomeScreen() {
   // Combine and sort today's activities
   const allActivities: Array<{
     id: string;
-    type: 'sleep' | 'feeding' | 'diaper' | 'pump';
+    type: 'sleep' | 'feeding' | 'diaper' | 'pump' | 'solid_food';
     time: number;
-    data: SleepSession | FeedingSession | PumpSession | DiaperChange;
+    data: SleepSession | FeedingSession | PumpSession | DiaperChange | SolidFoodLog;
   }> = [
     ...summary.sleepSessions.map(s => ({
       id: s.id,
@@ -186,6 +191,12 @@ export function HomeScreen() {
       type: 'diaper' as const,
       time: d.time,
       data: d,
+    })),
+    ...todaysFoodLogs.map(l => ({
+      id: l.id,
+      type: 'solid_food' as const,
+      time: l.time,
+      data: l,
     })),
   ].sort((a, b) => b.time - a.time);
 
@@ -265,6 +276,23 @@ export function HomeScreen() {
           onCancel={handleCancelFeeding}
         />
 
+        {/* Solid Food Logger */}
+        <div>
+          <h2 className="text-sm font-medium text-sand-400 mb-2">Solid Foods</h2>
+          <button
+            onClick={() => setShowFoodLogger(true)}
+            className="w-full flex items-center justify-center gap-2 py-3.5 rounded-2xl bg-orange-900/30 border border-orange-700/40 text-orange-300 font-medium hover:bg-orange-800/40 active:scale-[0.98] transition-all"
+          >
+            <span className="text-lg">🥄</span>
+            Log Solid Food
+            {todaysFoodLogs.length > 0 && (
+              <span className="ml-1 text-xs bg-orange-600/30 px-2 py-0.5 rounded-full">
+                {todaysFoodLogs.length} today
+              </span>
+            )}
+          </button>
+        </div>
+
         {/* Pump Timer */}
         <PumpTimer
           activePump={activePump}
@@ -282,6 +310,7 @@ export function HomeScreen() {
           diaperCount={summary.diaperCount}
           bottleCount={summary.bottleCount}
           totalBottleMl={summary.totalBottleMl}
+          solidFoodCount={todaysFoodLogs.length}
           lastPoopTime={lastPoop?.time}
           lastPeeTime={lastPee?.time}
         />
@@ -305,6 +334,8 @@ export function HomeScreen() {
                       deletePumpSession(activity.id);
                     } else if (activity.type === 'diaper') {
                       deleteDiaperChange(activity.id);
+                    } else if (activity.type === 'solid_food') {
+                      deleteSolidFoodLog(activity.id);
                     }
                   }}
                 />
@@ -313,6 +344,11 @@ export function HomeScreen() {
           </div>
         )}
       </div>
+
+      {/* Solid Food Logger Modal */}
+      {showFoodLogger && child && (
+        <SolidFoodLogger childId={child.id} onClose={() => setShowFoodLogger(false)} />
+      )}
     </div>
   );
 }

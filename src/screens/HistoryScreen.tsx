@@ -8,25 +8,28 @@ import {
   useFeedingsForDay,
   usePumpSessionsForDay,
   useDiapersForDay,
+  useSolidFoodLogsForDay,
 } from '@/hooks';
 import {
   deleteSleepSession,
   deleteFeedingSession,
   deletePumpSession,
   deleteDiaperChange,
+  deleteSolidFoodLog,
   updateSleepSession,
   updateFeedingSession,
   updatePumpSession,
   updateDiaperChange,
+  updateSolidFoodLog,
 } from '@/database/queries';
 import { formatDate, formatDuration } from '@/utils/time';
-import type { SleepSession, FeedingSession, PumpSession, DiaperChange } from '@/types';
+import type { SleepSession, FeedingSession, PumpSession, DiaperChange, SolidFoodLog } from '@/types';
 
 export function HistoryScreen() {
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [editingActivity, setEditingActivity] = useState<{
-    activity: SleepSession | FeedingSession | PumpSession | DiaperChange;
-    type: 'sleep' | 'feeding' | 'diaper' | 'pump';
+    activity: SleepSession | FeedingSession | PumpSession | DiaperChange | SolidFoodLog;
+    type: 'sleep' | 'feeding' | 'diaper' | 'pump' | 'solid_food';
   } | null>(null);
   const child = useCurrentChild();
 
@@ -34,6 +37,7 @@ export function HistoryScreen() {
   const feedings = useFeedingsForDay(child?.id, selectedDate);
   const pumps = usePumpSessionsForDay(child?.id, selectedDate);
   const diapers = useDiapersForDay(child?.id, selectedDate);
+  const solidFoodLogs = useSolidFoodLogsForDay(child?.id, selectedDate);
 
   const goToPreviousDay = () => {
     const newDate = new Date(selectedDate);
@@ -61,9 +65,9 @@ export function HistoryScreen() {
   // Combine and sort activities
   const allActivities: Array<{
     id: string;
-    type: 'sleep' | 'feeding' | 'diaper' | 'pump';
+    type: 'sleep' | 'feeding' | 'diaper' | 'pump' | 'solid_food';
     time: number;
-    data: SleepSession | FeedingSession | PumpSession | DiaperChange;
+    data: SleepSession | FeedingSession | PumpSession | DiaperChange | SolidFoodLog;
   }> = [
     ...sleepSessions.map(s => ({
       id: s.id,
@@ -88,6 +92,12 @@ export function HistoryScreen() {
       type: 'diaper' as const,
       time: d.time,
       data: d,
+    })),
+    ...solidFoodLogs.map(l => ({
+      id: l.id,
+      type: 'solid_food' as const,
+      time: l.time,
+      data: l,
     })),
   ].sort((a, b) => b.time - a.time);
 
@@ -172,6 +182,8 @@ export function HistoryScreen() {
                     deletePumpSession(activity.id);
                   } else if (activity.type === 'diaper') {
                     deleteDiaperChange(activity.id);
+                  } else if (activity.type === 'solid_food') {
+                    deleteSolidFoodLog(activity.id);
                   }
                 }}
               />
@@ -194,6 +206,8 @@ export function HistoryScreen() {
               updatePumpSession(editingActivity.activity.id, updates as Parameters<typeof updatePumpSession>[1]);
             } else if (editingActivity.type === 'diaper') {
               updateDiaperChange(editingActivity.activity.id, updates as Parameters<typeof updateDiaperChange>[1]);
+            } else if (editingActivity.type === 'solid_food') {
+              updateSolidFoodLog(editingActivity.activity.id, updates as Parameters<typeof updateSolidFoodLog>[1]);
             }
           }}
           onDelete={() => {
@@ -205,6 +219,8 @@ export function HistoryScreen() {
               deletePumpSession(editingActivity.activity.id);
             } else if (editingActivity.type === 'diaper') {
               deleteDiaperChange(editingActivity.activity.id);
+            } else if (editingActivity.type === 'solid_food') {
+              deleteSolidFoodLog(editingActivity.activity.id);
             }
           }}
           onClose={() => setEditingActivity(null)}

@@ -6,9 +6,13 @@ import type {
   FeedingSession,
   PumpSession,
   DiaperChange,
+  SolidFoodLog,
+  SolidFoodItem,
   SleepType,
   FeedingType,
   DiaperType,
+  MealType,
+  ReactionSeverity,
   ActiveTimer,
   OwletReading,
   OwletSleepState,
@@ -691,6 +695,117 @@ export async function getLastPump(childId: string): Promise<PumpSession | undefi
     .sortBy('endTime');
 
   return pumps[0];
+}
+
+// ============ SOLID FOOD LOGS ============
+
+export async function logSolidFood(
+  childId: string,
+  mealType: MealType,
+  foodItems: SolidFoodItem[],
+  time?: number,
+  notes?: string,
+  reaction?: ReactionSeverity,
+  reactionNotes?: string
+): Promise<SolidFoodLog> {
+  const now = Date.now();
+  const log: SolidFoodLog = {
+    id: uuidv4(),
+    childId,
+    time: time ?? now,
+    mealType,
+    foodItems,
+    notes,
+    reaction: reaction ?? 'none',
+    reactionNotes,
+    createdAt: now,
+    updatedAt: now,
+    syncStatus: 'pending',
+    _deleted: false,
+  };
+
+  await db.solidFoodLogs.add(log);
+  triggerSync();
+  return log;
+}
+
+export async function getSolidFoodLogsForDay(childId: string, date: Date): Promise<SolidFoodLog[]> {
+  const startOfDay = new Date(date);
+  startOfDay.setHours(0, 0, 0, 0);
+  const endOfDay = new Date(date);
+  endOfDay.setHours(23, 59, 59, 999);
+
+  return db.solidFoodLogs
+    .where('childId')
+    .equals(childId)
+    .and(l => !l._deleted && l.time >= startOfDay.getTime() && l.time <= endOfDay.getTime())
+    .sortBy('time');
+}
+
+export async function deleteSolidFoodLog(logId: string): Promise<void> {
+  await db.solidFoodLogs.update(logId, {
+    _deleted: true,
+    updatedAt: Date.now(),
+    syncStatus: 'pending',
+  });
+  triggerSync();
+}
+
+export async function updateSolidFoodLog(
+  logId: string,
+  updates: Partial<Pick<SolidFoodLog, 'time' | 'mealType' | 'foodItems' | 'notes' | 'reaction' | 'reactionNotes'>>
+): Promise<SolidFoodLog | undefined> {
+  await db.solidFoodLogs.update(logId, {
+    ...updates,
+    updatedAt: Date.now(),
+    syncStatus: 'pending',
+  });
+  triggerSync();
+  return db.solidFoodLogs.get(logId);
+}
+
+// Returns a map of foodId → timestamp of last time each food was served
+export async function getFoodHistory(childId: string): Promise<Map<string, number>> {
+  const logs = await db.solidFoodLogs
+    .where('childId')
+    .equals(childId)
+    .and(l => !l._deleted)
+    .toArray();
+
+  const lastServed = new Map<string, number>();
+  for (const log of logs) {
+    for (const item of log.foodItems) {
+      const prev = lastServed.get(item.foodId);
+      if (!prev || log.time > prev) {
+        lastServed.set(item.foodId, log.time);
+      }
+    }
+  }
+  return lastServed;
+}
+
+// Returns foodIds used in the last N days, sorted by most recent
+export async function getRecentFoodIds(childId: string, days: number = 14): Promise<string[]> {
+  const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
+  const logs = await db.solidFoodLogs
+    .where('childId')
+    .equals(childId)
+    .and(l => !l._deleted && l.time >= cutoff)
+    .reverse()
+    .sortBy('time');
+
+  // Deduplicate, preserving most-recent-first order
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const log of logs) {
+    for (const item of log.foodItems) {
+      if (!seen.has(item.foodId)) {
+        seen.add(item.foodId);
+        result.push(item.foodId);
+      }
+    }
+  }
+  return result;
 }
 
 // ============ OWLET READINGS (Local Ingestion) ============

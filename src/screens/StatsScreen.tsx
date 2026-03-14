@@ -26,6 +26,8 @@ interface DayData {
   dirty: number;
   pumpSessions: number;
   pumpMl: number;
+  solidMeals: number;
+  uniqueFoods: number;
 }
 
 const tooltipStyle = {
@@ -110,6 +112,17 @@ export function StatsScreen() {
 
       const pumpMl = pumpSessions.reduce((sum, p) => sum + (p.amount || 0), 0);
 
+      // Solid food data
+      const solidFoodLogs = await db.solidFoodLogs
+        .where('childId')
+        .equals(child.id)
+        .and(s => !s._deleted && s.time >= startMs && s.time <= endMs)
+        .toArray();
+
+      const uniqueFoodIds = new Set(
+        solidFoodLogs.flatMap(l => l.foodItems.map(f => f.foodId))
+      );
+
       days.push({
         date: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
         sleepHours: Math.round((totalSleepMs / (1000 * 60 * 60)) * 10) / 10,
@@ -122,6 +135,8 @@ export function StatsScreen() {
         dirty: dirtyCount,
         pumpSessions: pumpSessions.length,
         pumpMl: Math.round(pumpMl),
+        solidMeals: solidFoodLogs.length,
+        uniqueFoods: uniqueFoodIds.size,
       });
     }
 
@@ -131,7 +146,7 @@ export function StatsScreen() {
   // Calculate averages
   const averages = useMemo(() => {
     if (!allData || allData.length === 0) {
-      return { avgSleep: 0, avgNaps: 0, avgFeedings: 0, avgDiapers: 0, avgPumpMl: 0 };
+      return { avgSleep: 0, avgNaps: 0, avgFeedings: 0, avgDiapers: 0, avgPumpMl: 0, avgSolidMeals: 0 };
     }
 
     const len = allData.length;
@@ -141,6 +156,7 @@ export function StatsScreen() {
       avgFeedings: Math.round((allData.reduce((s, d) => s + d.feedings, 0) / len) * 10) / 10,
       avgDiapers: Math.round((allData.reduce((s, d) => s + d.diapers, 0) / len) * 10) / 10,
       avgPumpMl: Math.round(allData.reduce((s, d) => s + d.pumpMl, 0) / len),
+      avgSolidMeals: Math.round((allData.reduce((s, d) => s + d.solidMeals, 0) / len) * 10) / 10,
     };
   }, [allData]);
 
@@ -153,7 +169,7 @@ export function StatsScreen() {
 
       <div className="px-4 space-y-6">
         {/* Averages Row */}
-        <div className="grid grid-cols-5 gap-2">
+        <div className="grid grid-cols-6 gap-2">
           <div className="bg-sand-900/60 rounded-2xl p-3 border border-leather-800/50 text-center">
             <div className="text-xs text-sand-400 mb-1">Sleep</div>
             <div className="text-xl font-bold text-indigo-400">{averages.avgSleep}h</div>
@@ -173,6 +189,10 @@ export function StatsScreen() {
           <div className="bg-sand-900/60 rounded-2xl p-3 border border-leather-800/50 text-center">
             <div className="text-xs text-sand-400 mb-1">Pump</div>
             <div className="text-xl font-bold text-purple-400">{averages.avgPumpMl}<span className="text-xs">ml</span></div>
+          </div>
+          <div className="bg-sand-900/60 rounded-2xl p-3 border border-leather-800/50 text-center">
+            <div className="text-xs text-sand-400 mb-1">Solids</div>
+            <div className="text-xl font-bold text-orange-400">{averages.avgSolidMeals}</div>
           </div>
         </div>
 
@@ -339,6 +359,35 @@ export function StatsScreen() {
                   />
                   <Bar dataKey="wet" stackId="diapers" fill="#84cc16" radius={[0, 0, 0, 0]} />
                   <Bar dataKey="dirty" stackId="diapers" fill="#a16207" radius={[3, 3, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          ) : (
+            <div className="h-48 flex items-center justify-center text-sand-400">No data available</div>
+          )}
+        </div>
+
+        {/* Solid Food Meals - Bar Chart */}
+        <div className="bg-sand-900/60 rounded-2xl p-4 border border-leather-800/50">
+          <h2 className="text-lg font-semibold text-sand-100 mb-1">Solid Food</h2>
+          <p className="text-xs text-sand-500 mb-3">Meals & unique foods per day</p>
+
+          {allData && allData.length > 0 ? (
+            <div className="h-48">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={allData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#72543d30" />
+                  <XAxis dataKey="date" {...axisProps} interval="preserveStartEnd" />
+                  <YAxis {...axisProps} width={25} allowDecimals={false} />
+                  <Tooltip
+                    {...tooltipStyle}
+                    formatter={(value: number, name: string) => {
+                      if (name === 'solidMeals') return [value, 'Meals'];
+                      return [value, 'Unique Foods'];
+                    }}
+                  />
+                  <Bar dataKey="solidMeals" fill="#fb923c" radius={[3, 3, 0, 0]} />
+                  <Bar dataKey="uniqueFoods" fill="#fdba74" radius={[3, 3, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             </div>

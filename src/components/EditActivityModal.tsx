@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import { X, Check, Trash2 } from 'lucide-react';
-import type { SleepSession, FeedingSession, PumpSession, DiaperChange, SleepType, FeedingType, DiaperType } from '@/types';
+import type { SleepSession, FeedingSession, PumpSession, DiaperChange, SolidFoodLog, SleepType, FeedingType, DiaperType, MealType, ReactionSeverity } from '@/types';
 
-type ActivityData = SleepSession | FeedingSession | PumpSession | DiaperChange;
+type ActivityData = SleepSession | FeedingSession | PumpSession | DiaperChange | SolidFoodLog;
 
 interface EditActivityModalProps {
   activity: ActivityData;
-  type: 'sleep' | 'feeding' | 'diaper' | 'pump';
+  type: 'sleep' | 'feeding' | 'diaper' | 'pump' | 'solid_food';
   onSave: (updates: Partial<ActivityData>) => void;
   onDelete: () => void;
   onClose: () => void;
@@ -46,6 +46,13 @@ export function EditActivityModal({
   const [diaperTime, setDiaperTime] = useState('');
   const [diaperNotes, setDiaperNotes] = useState('');
 
+  // Solid food state
+  const [solidFoodTime, setSolidFoodTime] = useState('');
+  const [solidFoodMealType, setSolidFoodMealType] = useState<MealType>('snack');
+  const [solidFoodNotes, setSolidFoodNotes] = useState('');
+  const [solidFoodReaction, setSolidFoodReaction] = useState<ReactionSeverity>('none');
+  const [solidFoodReactionNotes, setSolidFoodReactionNotes] = useState('');
+
   // Initialize state based on activity type
   useEffect(() => {
     const toDateTimeLocal = (timestamp: number) => {
@@ -84,6 +91,13 @@ export function EditActivityModal({
       setDiaperType(diaper.type);
       setDiaperTime(toDateTimeLocal(diaper.time));
       setDiaperNotes(diaper.notes || '');
+    } else if (type === 'solid_food') {
+      const log = activity as SolidFoodLog;
+      setSolidFoodTime(toDateTimeLocal(log.time));
+      setSolidFoodMealType(log.mealType);
+      setSolidFoodNotes(log.notes || '');
+      setSolidFoodReaction(log.reaction || 'none');
+      setSolidFoodReactionNotes(log.reactionNotes || '');
     }
   }, [activity, type]);
 
@@ -119,6 +133,14 @@ export function EditActivityModal({
         time: toTimestamp(diaperTime),
         notes: diaperNotes || undefined,
       });
+    } else if (type === 'solid_food') {
+      onSave({
+        time: toTimestamp(solidFoodTime),
+        mealType: solidFoodMealType,
+        notes: solidFoodNotes || undefined,
+        reaction: solidFoodReaction,
+        reactionNotes: solidFoodReactionNotes || undefined,
+      });
     }
     onClose();
   };
@@ -146,7 +168,7 @@ export function EditActivityModal({
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-bold text-sand-100">
-            Edit {type === 'sleep' ? 'Sleep' : type === 'feeding' ? 'Feeding' : type === 'pump' ? 'Pump' : 'Diaper'}
+            Edit {type === 'sleep' ? 'Sleep' : type === 'feeding' ? 'Feeding' : type === 'pump' ? 'Pump' : type === 'solid_food' ? 'Solid Food' : 'Diaper'}
           </h2>
           <button
             onClick={onClose}
@@ -440,6 +462,96 @@ export function EditActivityModal({
                 <textarea
                   value={diaperNotes}
                   onChange={(e) => setDiaperNotes(e.target.value)}
+                  placeholder="Add notes..."
+                  className="w-full bg-leather-800 text-sand-100 rounded-xl px-4 py-3 border border-leather-700 resize-none h-20 placeholder:text-sand-500"
+                />
+              </div>
+            </>
+          )}
+
+          {type === 'solid_food' && (
+            <>
+              <div>
+                <label className="block text-sm text-sand-400 mb-2">Time</label>
+                <input
+                  type="datetime-local"
+                  value={solidFoodTime}
+                  onChange={(e) => setSolidFoodTime(e.target.value)}
+                  className="w-full bg-leather-800 text-sand-100 rounded-xl px-4 py-3 border border-leather-700"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm text-sand-400 mb-2">Meal</label>
+                <div className="grid grid-cols-4 gap-2">
+                  {(['breakfast', 'lunch', 'dinner', 'snack'] as MealType[]).map(mt => (
+                    <button
+                      key={mt}
+                      onClick={() => setSolidFoodMealType(mt)}
+                      className={`py-2 px-2 rounded-xl text-sm font-medium transition-colors ${
+                        solidFoodMealType === mt
+                          ? 'bg-orange-600 text-white'
+                          : 'bg-leather-800 text-sand-300 hover:bg-leather-700'
+                      }`}
+                    >
+                      {mt.charAt(0).toUpperCase() + mt.slice(1)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm text-sand-400 mb-2">Foods</label>
+                <div className="flex flex-wrap gap-1.5">
+                  {(activity as SolidFoodLog).foodItems.map(f => (
+                    <span key={f.foodId} className={`text-xs px-2 py-1 rounded-full ${
+                      f.isAllergen ? 'bg-amber-900/40 text-amber-300' : 'bg-orange-900/40 text-orange-300'
+                    }`}>
+                      {f.isAllergen && '⚠️ '}{f.name}
+                    </span>
+                  ))}
+                </div>
+                <p className="text-xs text-sand-500 mt-1">To change foods, delete and re-log</p>
+              </div>
+
+              <div>
+                <label className="block text-sm text-sand-400 mb-2">Reaction</label>
+                <div className="grid grid-cols-4 gap-2">
+                  {([
+                    { value: 'none' as const, label: 'None', color: 'bg-green-700' },
+                    { value: 'mild' as const, label: 'Mild', color: 'bg-yellow-600' },
+                    { value: 'moderate' as const, label: 'Moderate', color: 'bg-orange-600' },
+                    { value: 'severe' as const, label: 'Severe', color: 'bg-red-700' },
+                  ]).map(r => (
+                    <button
+                      key={r.value}
+                      onClick={() => setSolidFoodReaction(r.value)}
+                      className={`py-2 px-2 rounded-xl text-sm font-medium transition-colors ${
+                        solidFoodReaction === r.value
+                          ? `${r.color} text-white`
+                          : 'bg-leather-800 text-sand-300 hover:bg-leather-700'
+                      }`}
+                    >
+                      {r.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {solidFoodReaction !== 'none' && (
+                <textarea
+                  value={solidFoodReactionNotes}
+                  onChange={(e) => setSolidFoodReactionNotes(e.target.value)}
+                  placeholder="Describe the reaction..."
+                  className="w-full bg-leather-800 text-sand-100 rounded-xl px-4 py-3 border border-leather-700 resize-none h-20 placeholder:text-sand-500"
+                />
+              )}
+
+              <div>
+                <label className="block text-sm text-sand-400 mb-2">Notes</label>
+                <textarea
+                  value={solidFoodNotes}
+                  onChange={(e) => setSolidFoodNotes(e.target.value)}
                   placeholder="Add notes..."
                   className="w-full bg-leather-800 text-sand-100 rounded-xl px-4 py-3 border border-leather-700 resize-none h-20 placeholder:text-sand-500"
                 />
