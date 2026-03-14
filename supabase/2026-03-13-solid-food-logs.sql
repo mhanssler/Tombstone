@@ -2,8 +2,8 @@
 -- foodItems is stored as JSONB (embedded array of {foodId, name, category, isAllergen, allergenGroup}).
 
 CREATE TABLE IF NOT EXISTS public.solid_food_logs (
-  id           TEXT PRIMARY KEY,
-  "childId"    TEXT NOT NULL REFERENCES public.children(id),
+  id           UUID PRIMARY KEY,
+  "childId"    UUID NOT NULL REFERENCES public.children(id),
   "time"       BIGINT NOT NULL,          -- Unix timestamp ms
   "mealType"   TEXT NOT NULL,             -- breakfast | lunch | dinner | snack
   "foodItems"  JSONB NOT NULL DEFAULT '[]',
