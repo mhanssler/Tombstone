@@ -345,6 +345,69 @@ export async function clearActiveTimer(type: 'sleep' | 'feeding' | 'pump'): Prom
   await db.activeTimers.delete(type);
 }
 
+// ============ ACTIVE TIMER RECONCILIATION ============
+// After sync or realtime updates, the local activeTimers table may be stale.
+// This function scans for open sessions and keeps activeTimers in sync so
+// timers started on one device appear correctly on all devices.
+
+export async function reconcileActiveTimers(): Promise<void> {
+  await reconcileTimerType(
+    'sleep',
+    () => db.sleepSessions.filter(s => !s._deleted && !s.endTime && s.startTime > 0).toArray()
+  );
+  await reconcileTimerType(
+    'feeding',
+    () => db.feedingSessions.filter(f => !f._deleted && !f.endTime && f.startTime > 0).toArray(),
+    (session: FeedingSession) => {
+      const side = session.type === 'breast_left' ? 'left' as const
+        : session.type === 'breast_right' ? 'right' as const
+        : undefined;
+      return side ? { feedingSide: side } : {};
+    }
+  );
+  await reconcileTimerType(
+    'pump',
+    () => db.pumpSessions.filter(p => !p._deleted && !p.endTime && p.startTime > 0).toArray()
+  );
+}
+
+async function reconcileTimerType<T extends { id: string; startTime: number }>(
+  timerType: 'sleep' | 'feeding' | 'pump',
+  getOpenSessions: () => Promise<T[]>,
+  extraFields?: (session: T) => Partial<ActiveTimer>
+): Promise<void> {
+  const openSessions = await getOpenSessions();
+  const currentTimer = await db.activeTimers.get(timerType);
+
+  if (openSessions.length === 0) {
+    // No open sessions — clear any stale local timer
+    if (currentTimer) {
+      await db.activeTimers.delete(timerType);
+    }
+    return;
+  }
+
+  // Pick the most recent open session as the canonical one
+  const mostRecent = openSessions.reduce((latest, s) =>
+    s.startTime > latest.startTime ? s : latest
+  );
+
+  // If the local timer already points at the right session, nothing to do
+  if (currentTimer && currentTimer.activityId === mostRecent.id) {
+    return;
+  }
+
+  // Set (or update) local active timer to point at the canonical session
+  const timer: ActiveTimer = {
+    id: timerType,
+    activityType: timerType,
+    activityId: mostRecent.id,
+    startTime: mostRecent.startTime,
+    ...(extraFields ? extraFields(mostRecent) : {}),
+  };
+  await db.activeTimers.put(timer);
+}
+
 // ============ STATISTICS ============
 
 export async function getWakeWindowMinutes(childId: string): Promise<number | null> {

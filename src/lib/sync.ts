@@ -1,5 +1,6 @@
 import { Table } from 'dexie';
 import { db } from '@/database/db';
+import { reconcileActiveTimers } from '@/database/queries';
 import { getSupabase, isSupabaseConfigured } from './supabase';
 import type { SyncableEntity } from '@/types';
 import type { RealtimeChannel } from '@supabase/supabase-js';
@@ -276,6 +277,12 @@ export async function syncAll(): Promise<{
       allErrors.push(...result.errors);
     }
 
+    // Reconcile local active timers with the actual session state after pull.
+    // This ensures timers started/stopped on another device are reflected here.
+    if (totalPulled > 0) {
+      await reconcileActiveTimers();
+    }
+
     // Update global last sync time
     if (allErrors.length === 0) {
       localStorage.setItem('lastGlobalSync', Date.now().toString());
@@ -469,6 +476,8 @@ async function handleRealtimeChange<T extends SyncableEntity>(
   const localTableName = localTableMapping[tableName];
   const localTable = db[localTableName] as Table<T, string>;
 
+  const sessionTables: TableName[] = ['sleep_sessions', 'feeding_sessions', 'pump_sessions'];
+
   if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
     const record = payload.new as T;
     if (!record?.id) return;
@@ -486,6 +495,11 @@ async function handleRealtimeChange<T extends SyncableEntity>(
       await localTable.delete(oldRecord.id);
       console.log(`[Realtime] DELETE ${tableName}:`, oldRecord.id);
     }
+  }
+
+  // Reconcile active timers whenever a session table changes via realtime
+  if (sessionTables.includes(tableName)) {
+    await reconcileActiveTimers();
   }
 }
 
